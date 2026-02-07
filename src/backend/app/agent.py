@@ -63,7 +63,10 @@ async def list_entities(
         limit: Max results to return (default 25).
         offset: Pagination offset.
     """
-    states = await ctx.deps.ha.get_states()
+    try:
+        states = await ctx.deps.ha.get_states()
+    except Exception as e:
+        return {"error": f"Failed to fetch states: {e}"}
     has_filter = any([domain, state, keyword])
 
     results = []
@@ -129,7 +132,10 @@ async def get_entity_history(
         entity_id: The entity ID.
         hours: Number of hours of history to retrieve (default 24).
     """
-    history = await ctx.deps.ha.get_history(entity_id, hours=hours)
+    try:
+        history = await ctx.deps.ha.get_history(entity_id, hours=hours)
+    except Exception as e:
+        return {"error": f"Failed to fetch history for '{entity_id}': {e}"}
     if not history or not history[0]:
         return {"entity_id": entity_id, "changes": []}
 
@@ -158,7 +164,10 @@ async def search_entities(
         query: Search term to match against entity IDs and friendly names.
         limit: Max results (default 25).
     """
-    states = await ctx.deps.ha.get_states()
+    try:
+        states = await ctx.deps.ha.get_states()
+    except Exception as e:
+        return {"error": f"Failed to fetch states: {e}"}
     q = query.lower()
     results = []
     for s in states:
@@ -191,7 +200,10 @@ async def list_automations(
         limit: Max results (default 25).
         offset: Pagination offset.
     """
-    states = await ctx.deps.ha.get_states()
+    try:
+        states = await ctx.deps.ha.get_states()
+    except Exception as e:
+        return {"error": f"Failed to fetch states: {e}"}
     automations = [s for s in states if s["entity_id"].startswith("automation.")]
 
     results = []
@@ -228,7 +240,10 @@ async def list_scripts(
         limit: Max results (default 25).
         offset: Pagination offset.
     """
-    states = await ctx.deps.ha.get_states()
+    try:
+        states = await ctx.deps.ha.get_states()
+    except Exception as e:
+        return {"error": f"Failed to fetch states: {e}"}
     scripts = [s for s in states if s["entity_id"].startswith("script.")]
 
     results = []
@@ -264,7 +279,10 @@ async def find_unavailable_entities(
         domain: Optionally limit to a specific domain.
         limit: Max results (default 50).
     """
-    states = await ctx.deps.ha.get_states()
+    try:
+        states = await ctx.deps.ha.get_states()
+    except Exception as e:
+        return {"error": f"Failed to fetch states: {e}"}
     results = []
     for s in states:
         eid = s["entity_id"]
@@ -297,7 +315,10 @@ async def find_stale_entities(
     """
     from datetime import datetime, timezone
 
-    states = await ctx.deps.ha.get_states()
+    try:
+        states = await ctx.deps.ha.get_states()
+    except Exception as e:
+        return {"error": f"Failed to fetch states: {e}"}
     cutoff = datetime.now(timezone.utc).isoformat()
     threshold = datetime.now(timezone.utc) - __import__("datetime").timedelta(hours=hours)
 
@@ -345,7 +366,10 @@ async def find_unused_automations(
     """
     from datetime import datetime, timezone, timedelta
 
-    states = await ctx.deps.ha.get_states()
+    try:
+        states = await ctx.deps.ha.get_states()
+    except Exception as e:
+        return {"error": f"Failed to fetch states: {e}"}
     threshold = datetime.now(timezone.utc) - timedelta(days=days)
     automations = [s for s in states if s["entity_id"].startswith("automation.")]
 
@@ -390,7 +414,10 @@ async def get_error_log(
     Args:
         lines: Number of lines to return (default 50).
     """
-    log = await ctx.deps.ha.get_error_log()
+    try:
+        log = await ctx.deps.ha.get_error_log()
+    except Exception as e:
+        return {"error": f"Failed to fetch error log: {e}"}
     log_lines = log.strip().split("\n")
     return {"lines": log_lines[-lines:], "total_lines": len(log_lines)}
 
@@ -410,14 +437,20 @@ async def render_template(
     Args:
         template: The Jinja2 template string to evaluate.
     """
-    result = await ctx.deps.ha.render_template(template)
-    return {"template": template, "result": result}
+    try:
+        result = await ctx.deps.ha.render_template(template)
+        return {"template": template, "result": result}
+    except Exception as e:
+        return {"error": f"Template rendering failed: {e}"}
 
 
 @agent.tool
 async def check_config(ctx: RunContext[AgentDeps]) -> dict:
     """Validate the Home Assistant configuration files."""
-    return await ctx.deps.ha.check_config()
+    try:
+        return await ctx.deps.ha.check_config()
+    except Exception as e:
+        return {"error": f"Config check failed: {e}"}
 
 
 @agent.tool

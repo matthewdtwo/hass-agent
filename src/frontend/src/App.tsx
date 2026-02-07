@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { checkAuth, loginUrl, type User } from "./api/auth";
 import { deleteSession, listSessions } from "./api/sessions";
 import Chat from "./components/Chat";
 import ModelSelector from "./components/ModelSelector";
@@ -6,6 +7,8 @@ import Sidebar from "./components/Sidebar";
 import type { SessionInfo } from "./types";
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [model, setModel] = useState("google-gla:gemini-3-flash-preview");
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -13,10 +16,22 @@ export default function App() {
   // NOT when a session is auto-created mid-stream.
   const [chatKey, setChatKey] = useState("__new__");
 
-  // Load sessions on mount
+  // Check auth on mount
   useEffect(() => {
-    listSessions().then(setSessions).catch(() => {});
+    checkAuth()
+      .then((u) => {
+        setUser(u);
+        setAuthChecked(true);
+      })
+      .catch(() => setAuthChecked(true));
   }, []);
+
+  // Load sessions once authenticated
+  useEffect(() => {
+    if (user) {
+      listSessions().then(setSessions).catch(() => {});
+    }
+  }, [user]);
 
   const handleNewChat = useCallback(() => {
     setActiveSessionId(null);
@@ -56,6 +71,33 @@ export default function App() {
     []
   );
 
+  // Loading state
+  if (!authChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400">
+        Loading...
+      </div>
+    );
+  }
+
+  // Not authenticated — show login
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950">
+        <div className="flex flex-col items-center gap-6 rounded-xl border border-gray-800 bg-gray-900 px-12 py-10">
+          <h1 className="text-2xl font-semibold text-gray-100">HA Agent</h1>
+          <p className="text-sm text-gray-400">Sign in to continue</p>
+          <a
+            href={loginUrl()}
+            className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-200"
+          >
+            Sign in with Google
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-950 text-gray-100">
       {/* Sidebar */}
@@ -65,6 +107,7 @@ export default function App() {
         onSelectSession={handleSelectSession}
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
+        user={user}
       />
 
       {/* Main content */}

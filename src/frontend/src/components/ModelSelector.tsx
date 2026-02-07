@@ -11,7 +11,10 @@ export default function ModelSelector({ selected, onSelect }: Props) {
 
   useEffect(() => {
     fetch("/api/models")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) return [];
+        return r.json();
+      })
       .then(setModels)
       .catch(() => {});
   }, []);

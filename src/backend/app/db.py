@@ -10,13 +10,25 @@ import aiosqlite
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 
 _SCHEMA = """\
+CREATE TABLE IF NOT EXISTS users (
+    id         TEXT PRIMARY KEY,
+    email      TEXT UNIQUE NOT NULL,
+    name       TEXT NOT NULL,
+    picture    TEXT,
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
     id             TEXT PRIMARY KEY,
+    user_id        TEXT REFERENCES users(id),
     title          TEXT NOT NULL,
     created_at     TEXT NOT NULL,
     updated_at     TEXT NOT NULL,
     model_history  TEXT NOT NULL DEFAULT '[]'
 );
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user
+    ON sessions(user_id, updated_at);
 
 CREATE TABLE IF NOT EXISTS messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,12 +51,49 @@ async def init_db(path: str) -> aiosqlite.Connection:
     await db.execute("PRAGMA journal_mode=WAL")
     await db.execute("PRAGMA foreign_keys=ON")
     await db.executescript(_SCHEMA)
+    # Migrate existing DBs: add user_id column if missing
+    try:
+        await db.execute("ALTER TABLE sessions ADD COLUMN user_id TEXT REFERENCES users(id)")
+        await db.commit()
+    except Exception:
+        pass  # Column already exists
     await db.commit()
     return db
 
 
 async def close_db(db: aiosqlite.Connection) -> None:
     await db.close()
+
+
+# ------------------------------------------------------------------
+# Users
+# ------------------------------------------------------------------
+
+
+async def get_or_create_user(
+    db: aiosqlite.Connection,
+    email: str,
+    name: str,
+    picture: str | None = None,
+) -> dict[str, Any]:
+    cursor = await db.execute("SELECT * FROM users WHERE email = ?", (email,))
+    row = await cursor.fetchone()
+    if row:
+        # Update name/picture on each login
+        await db.execute(
+            "UPDATE users SET name = ?, picture = ? WHERE id = ?",
+            (name, picture, row["id"]),
+        )
+        await db.commit()
+        return {"id": row["id"], "email": email, "name": name, "picture": picture}
+    uid = uuid.uuid4().hex
+    now = _now()
+    await db.execute(
+        "INSERT INTO users (id, email, name, picture, created_at) VALUES (?, ?, ?, ?, ?)",
+        (uid, email, name, picture, now),
+    )
+    await db.commit()
+    return {"id": uid, "email": email, "name": name, "picture": picture}
 
 
 # ------------------------------------------------------------------
@@ -56,28 +105,39 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def create_session(db: aiosqlite.Connection, title: str) -> dict[str, Any]:
+async def create_session(
+    db: aiosqlite.Connection, title: str, user_id: str | None = None
+) -> dict[str, Any]:
     sid = uuid.uuid4().hex
     now = _now()
     await db.execute(
-        "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-        (sid, title, now, now),
+        "INSERT INTO sessions (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        (sid, user_id, title, now, now),
     )
     await db.commit()
     return {"id": sid, "title": title, "created_at": now, "updated_at": now}
 
 
-async def list_sessions(db: aiosqlite.Connection) -> list[dict[str, Any]]:
-    cursor = await db.execute(
-        "SELECT id, title, created_at, updated_at FROM sessions ORDER BY updated_at DESC"
-    )
+async def list_sessions(
+    db: aiosqlite.Connection, user_id: str | None = None
+) -> list[dict[str, Any]]:
+    if user_id:
+        cursor = await db.execute(
+            "SELECT id, title, created_at, updated_at FROM sessions "
+            "WHERE user_id = ? ORDER BY updated_at DESC",
+            (user_id,),
+        )
+    else:
+        cursor = await db.execute(
+            "SELECT id, title, created_at, updated_at FROM sessions ORDER BY updated_at DESC"
+        )
     rows = await cursor.fetchall()
     return [dict(r) for r in rows]
 
 
 async def get_session(db: aiosqlite.Connection, session_id: str) -> dict[str, Any] | None:
     cursor = await db.execute(
-        "SELECT id, title, created_at, updated_at FROM sessions WHERE id = ?",
+        "SELECT id, user_id, title, created_at, updated_at FROM sessions WHERE id = ?",
         (session_id,),
     )
     row = await cursor.fetchone()

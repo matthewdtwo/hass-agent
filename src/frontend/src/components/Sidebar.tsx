@@ -1,3 +1,5 @@
+import type { User } from "../api/auth";
+import { logout } from "../api/auth";
 import type { SessionInfo } from "../types";
 
 interface Props {
@@ -6,6 +8,7 @@ interface Props {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   onDeleteSession: (id: string) => void;
+  user: User;
 }
 
 function timeAgo(iso: string): string {
@@ -25,7 +28,13 @@ export default function Sidebar({
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  user,
 }: Props) {
+  const handleLogout = async () => {
+    await logout();
+    window.location.reload();
+  };
+
   return (
     <aside className="flex h-full w-64 flex-col border-r border-gray-800 bg-gray-950">
       {/* New chat button */}
@@ -85,6 +94,50 @@ export default function Sidebar({
           </div>
         ))}
       </nav>
+
+      {/* User info */}
+      <div className="border-t border-gray-800 p-3">
+        <div className="flex items-center gap-2">
+          {user.picture ? (
+            <img
+              src={user.picture}
+              alt=""
+              className="h-7 w-7 shrink-0 rounded-full"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-700 text-xs text-gray-300">
+              {user.name[0]}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm text-gray-300">{user.name}</div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="shrink-0 rounded p-1 text-gray-600 hover:bg-gray-800 hover:text-gray-300"
+            title="Sign out"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z"
+                clipRule="evenodd"
+              />
+              <path
+                fillRule="evenodd"
+                d="M19 10a.75.75 0 00-.75-.75H8.704l1.048-.943a.75.75 0 10-1.004-1.114l-2.5 2.25a.75.75 0 000 1.114l2.5 2.25a.75.75 0 101.004-1.114l-1.048-.943h9.546A.75.75 0 0019 10z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
     </aside>
   );
 }
