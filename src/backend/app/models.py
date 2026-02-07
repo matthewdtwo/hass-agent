@@ -17,3 +17,35 @@ class ModelInfo(BaseModel):
     id: str
     provider: str
     name: str
+
+
+# ------------------------------------------------------------------
+# Session models
+# ------------------------------------------------------------------
+
+
+class SessionInfo(BaseModel):
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+class DisplayMessage(BaseModel):
+    id: int
+    role: str
+    content: str
+    tool_calls: list[dict] | None = None
+    created_at: str
+
+
+class SessionDetail(SessionInfo):
+    messages: list[DisplayMessage]
+
+
+class CreateSessionRequest(BaseModel):
+    title: str | None = None
+
+
+class UpdateSessionRequest(BaseModel):
+    title: str

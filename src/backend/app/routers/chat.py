@@ -12,9 +12,15 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.providers.ollama import OllamaProvider
 
-
 from app.agent import AgentDeps, agent
 from app.config import settings
+from app.db import (
+    create_session,
+    get_message_history,
+    save_display_message,
+    save_message_history,
+    touch_session,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +43,16 @@ def _resolve_model(model_id: str):
 
 
 @router.websocket("/ws/chat")
-async def chat_ws(ws: WebSocket) -> None:
+async def chat_ws(ws: WebSocket, session_id: str | None = None) -> None:
     await ws.accept()
     ha_client = ws.app.state.ha_client
-    message_history: list = []
+    db = ws.app.state.db
+
+    # Load existing history if resuming a session
+    if session_id:
+        message_history = await get_message_history(db, session_id)
+    else:
+        message_history = []
 
     try:
         while True:
@@ -48,8 +60,23 @@ async def chat_ws(ws: WebSocket) -> None:
             user_msg = data.get("message", "")
             model_id = data.get("model", f"google-gla:{settings.gemini_model}")
 
+            # Auto-create session on first message
+            if not session_id:
+                title = user_msg[:80].strip() or "New chat"
+                session = await create_session(db, title)
+                session_id = session["id"]
+                await ws.send_json({
+                    "type": "session_created",
+                    "session_id": session_id,
+                    "title": title,
+                })
+
             model = _resolve_model(model_id)
             deps = AgentDeps(ha=ha_client)
+
+            # Track streamed content for display persistence
+            assistant_content = ""
+            tool_calls_display: list[dict] = []
 
             async with agent.iter(
                 user_msg,
@@ -61,32 +88,54 @@ async def chat_ws(ws: WebSocket) -> None:
                     if Agent.is_model_request_node(node):
                         async with node.stream(run.ctx) as stream:
                             async for chunk in stream.stream_text(delta=True):
+                                assistant_content += chunk
                                 await ws.send_json({"type": "token", "content": chunk})
 
                     elif Agent.is_call_tools_node(node):
                         for part in node.model_response.parts:
                             if hasattr(part, "tool_name"):
-                                await ws.send_json({
-                                    "type": "tool_call",
+                                tc = {
                                     "name": part.tool_name,
                                     "args": part.args
                                     if isinstance(part.args, dict)
                                     else {},
+                                }
+                                tool_calls_display.append(tc)
+                                await ws.send_json({
+                                    "type": "tool_call",
+                                    "name": part.tool_name,
+                                    "args": tc["args"],
                                 })
                         # Execute tools and report results
                         async with node.stream(run.ctx) as handle_stream:
                             async for event in handle_stream:
                                 if isinstance(event, FunctionToolResultEvent):
+                                    result_str = str(event.result.content)[:500]
+                                    # Update matching tool call with result
+                                    for tc in tool_calls_display:
+                                        if tc["name"] == event.result.tool_name and "result" not in tc:
+                                            tc["result"] = result_str
+                                            break
                                     await ws.send_json({
                                         "type": "tool_result",
                                         "name": event.result.tool_name,
-                                        "content": str(
-                                            event.result.content
-                                        )[:500],
+                                        "content": result_str,
                                     })
 
             # Save conversation history for multi-turn
             message_history = run.result.all_messages()
+
+            # Persist to database
+            await save_display_message(db, session_id, "user", user_msg)
+            await save_display_message(
+                db,
+                session_id,
+                "assistant",
+                assistant_content,
+                tool_calls_display if tool_calls_display else None,
+            )
+            await save_message_history(db, session_id, message_history)
+
             await ws.send_json({"type": "done"})
 
     except WebSocketDisconnect:

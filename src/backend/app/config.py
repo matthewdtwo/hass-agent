@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ollama_host: str
     gemini_api_key: str
     gemini_model: str = "gemini-3-flash-preview"
+    db_path: str = "data/hass_agent.db"
 
 
 settings = Settings()

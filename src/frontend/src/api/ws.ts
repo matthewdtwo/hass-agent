@@ -1,22 +1,38 @@
 import { useCallback, useRef, useState } from "react";
 import type { ChatMessage, ToolCall, WSEvent } from "../types";
 
-export function useAgentChat() {
+interface UseAgentChatOptions {
+  sessionId: string | null;
+  onSessionCreated?: (sessionId: string, title: string) => void;
+}
+
+export function useAgentChat({
+  sessionId,
+  onSessionCreated,
+}: UseAgentChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingToolCalls = useRef<ToolCall[]>([]);
+  const onSessionCreatedRef = useRef(onSessionCreated);
+  onSessionCreatedRef.current = onSessionCreated;
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
+    const base = `${protocol}//${window.location.host}/ws/chat`;
+    const url = sessionId ? `${base}?session_id=${sessionId}` : base;
+    const ws = new WebSocket(url);
     wsRef.current = ws;
 
     ws.onclose = () => {
       wsRef.current = null;
     };
+  }, [sessionId]);
+
+  const loadMessages = useCallback((msgs: ChatMessage[]) => {
+    setMessages(msgs);
   }, []);
 
   const sendMessage = useCallback(
@@ -42,6 +58,10 @@ export function useAgentChat() {
         const data: WSEvent = JSON.parse(event.data);
 
         switch (data.type) {
+          case "session_created":
+            onSessionCreatedRef.current?.(data.session_id!, data.title!);
+            break;
+
           case "token":
             setMessages((prev) => {
               const last = prev[prev.length - 1];
@@ -112,12 +132,17 @@ export function useAgentChat() {
     [connect]
   );
 
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-    // Close and reopen WS to reset server-side history
+  const disconnect = useCallback(() => {
     wsRef.current?.close();
     wsRef.current = null;
   }, []);
 
-  return { messages, isStreaming, sendMessage, connect, clearMessages };
+  return {
+    messages,
+    isStreaming,
+    sendMessage,
+    connect,
+    disconnect,
+    loadMessages,
+  };
 }
