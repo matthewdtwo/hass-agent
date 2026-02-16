@@ -227,6 +227,120 @@ async def list_automations(
 
 
 @agent.tool
+async def create_automation(
+    ctx: RunContext[AgentDeps],
+    alias: str,
+    triggers: list[dict],
+    actions: list[dict],
+    description: str = "",
+    conditions: list[dict] | None = None,
+    mode: str = "single",
+) -> dict:
+    """Create a new Home Assistant automation.
+
+    Args:
+        alias: Short friendly name (2-3 words, e.g. 'Motion Lights', 'Night Lock').
+        triggers: List of trigger configurations. Each trigger needs a 'trigger'
+            key (formerly 'platform') and trigger-specific keys. Example:
+            [{"trigger": "state", "entity_id": "binary_sensor.motion", "to": "on"}]
+        actions: List of action configurations. Example:
+            [{"action": "light.turn_on", "target": {"entity_id": "light.living_room"}}]
+        description: Optional description of what the automation does.
+        conditions: Optional list of condition configurations.
+        mode: Execution mode — 'single', 'restart', 'queued', or 'parallel' (default 'single').
+    """
+    config = {
+        "alias": alias,
+        "description": description,
+        "mode": mode,
+        "triggers": triggers,
+        "conditions": conditions or [],
+        "actions": actions,
+    }
+    try:
+        result = await ctx.deps.ha.create_automation(config)
+        return {"alias": alias, **result}
+    except Exception as e:
+        return {"error": f"Failed to create automation: {e}"}
+
+
+@agent.tool
+async def get_automation_config(
+    ctx: RunContext[AgentDeps],
+    entity_id: str,
+) -> dict:
+    """Get the full editable configuration of an existing automation.
+    Use this before update_automation to see the current triggers, conditions,
+    and actions.
+
+    Args:
+        entity_id: The automation entity ID (e.g. 'automation.turn_on_lights').
+    """
+    try:
+        state = await ctx.deps.ha.get_entity_state(entity_id)
+    except Exception:
+        return {"error": f"Automation '{entity_id}' not found"}
+
+    automation_id = state.get("attributes", {}).get("id")
+    if not automation_id:
+        return {"error": f"Could not resolve config ID for '{entity_id}'"}
+
+    try:
+        config = await ctx.deps.ha.get_automation_config(automation_id)
+        return {"entity_id": entity_id, "automation_id": automation_id, "config": config}
+    except Exception as e:
+        return {"error": f"Failed to fetch config for '{entity_id}': {e}"}
+
+
+@agent.tool
+async def update_automation(
+    ctx: RunContext[AgentDeps],
+    entity_id: str,
+    alias: str,
+    triggers: list[dict],
+    actions: list[dict],
+    description: str = "",
+    conditions: list[dict] | None = None,
+    mode: str = "single",
+) -> dict:
+    """Update an existing Home Assistant automation. You must provide the
+    complete automation config — any fields you omit will be removed.
+    Use get_automation_config first to see the current config.
+
+    Args:
+        entity_id: The automation entity ID (e.g. 'automation.turn_on_lights').
+        alias: Friendly name for the automation.
+        triggers: Complete list of trigger configurations.
+        actions: Complete list of action configurations.
+        description: Optional description of what the automation does.
+        conditions: Optional list of condition configurations.
+        mode: Execution mode — 'single', 'restart', 'queued', or 'parallel' (default 'single').
+    """
+    try:
+        state = await ctx.deps.ha.get_entity_state(entity_id)
+    except Exception:
+        return {"error": f"Automation '{entity_id}' not found"}
+
+    automation_id = state.get("attributes", {}).get("id")
+    if not automation_id:
+        return {"error": f"Could not resolve config ID for '{entity_id}'"}
+
+    config = {
+        "alias": alias,
+        "description": description,
+        "mode": mode,
+        "triggers": triggers,
+        "conditions": conditions or [],
+        "actions": actions,
+    }
+    try:
+        result = await ctx.deps.ha.update_automation(automation_id, config)
+        return {"entity_id": entity_id, **result}
+    except Exception as e:
+        return {"error": f"Failed to update automation: {e}"}
+
+
+@agent.tool
 async def list_scripts(
     ctx: RunContext[AgentDeps],
     keyword: str | None = None,
@@ -420,6 +534,49 @@ async def get_error_log(
         return {"error": f"Failed to fetch error log: {e}"}
     log_lines = log.strip().split("\n")
     return {"lines": log_lines[-lines:], "total_lines": len(log_lines)}
+
+
+# ------------------------------------------------------------------
+# Service discovery tools
+# ------------------------------------------------------------------
+
+
+@agent.tool
+async def list_services(
+    ctx: RunContext[AgentDeps],
+    domain: str | None = None,
+) -> dict:
+    """List available Home Assistant services. With no domain filter returns a
+    summary of service counts per domain. With a domain filter returns all
+    services and their fields for that domain.
+
+    Args:
+        domain: Filter by domain (e.g. 'light', 'automation', 'notify').
+    """
+    try:
+        services = await ctx.deps.ha.get_services()
+    except Exception as e:
+        return {"error": f"Failed to fetch services: {e}"}
+
+    if not domain:
+        summary = {s["domain"]: len(s.get("services", {})) for s in services}
+        return {"total_domains": len(summary), "domains": summary}
+
+    for s in services:
+        if s["domain"] == domain:
+            compact = {}
+            for name, info in s.get("services", {}).items():
+                entry: dict = {"description": info.get("description", "")}
+                fields = info.get("fields", {})
+                if fields:
+                    entry["fields"] = {
+                        k: v.get("description", "")
+                        for k, v in fields.items()
+                    }
+                compact[name] = entry
+            return {"domain": domain, "services": compact}
+
+    return {"error": f"Domain '{domain}' not found"}
 
 
 # ------------------------------------------------------------------

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from openai.types import chat
 from pydantic_ai import Agent
 from pydantic_ai.messages import FunctionToolResultEvent
 from pydantic_ai.models.google import GoogleModel
@@ -26,11 +28,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
 
+class OllamaChatModel(OpenAIChatModel):
+    """OpenAI-compatible model that avoids content=None for Ollama compatibility."""
+
+    @dataclass
+    class _MapModelResponseContext(OpenAIChatModel._MapModelResponseContext):
+        def _into_message_param(self) -> chat.ChatCompletionAssistantMessageParam:
+            msg = super()._into_message_param()
+            if msg.get("content") is None:
+                msg["content"] = ""
+            return msg
+
+
 def _resolve_model(model_id: str):
     """Map a model ID string to a PydanticAI model."""
     if model_id.startswith("ollama:"):
         model_name = model_id.removeprefix("ollama:")
-        return OpenAIChatModel(model_name, provider=OllamaProvider(base_url=f"{settings.ollama_host}/v1"))
+        return OllamaChatModel(model_name, provider=OllamaProvider(base_url=f"{settings.ollama_host}/v1"))
     if model_id.startswith("google-gla:"):
         model_name = model_id.removeprefix("google-gla:")
         return GoogleModel(

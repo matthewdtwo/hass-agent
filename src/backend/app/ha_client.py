@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -160,3 +161,35 @@ class HAClient:
             "entity_id": entity_id,
         })
         return {"removed": entity_id}
+
+    # ------------------------------------------------------------------
+    # Automation management
+    # ------------------------------------------------------------------
+
+    async def create_automation(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Create a new automation via the config API."""
+        automation_id = uuid.uuid4().hex
+        assert self._http is not None
+        resp = await self._http.post(
+            f"/api/config/automation/config/{automation_id}",
+            json=config,
+        )
+        resp.raise_for_status()
+        return {"id": automation_id, "created": True}
+
+    async def get_automation_config(self, automation_id: str) -> dict[str, Any]:
+        """Get the editable config for an automation by its config ID."""
+        assert self._http is not None
+        resp = await self._http.get(f"/api/config/automation/config/{automation_id}")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def update_automation(self, automation_id: str, config: dict[str, Any]) -> dict[str, Any]:
+        """Update an existing automation by its config ID."""
+        assert self._http is not None
+        resp = await self._http.post(
+            f"/api/config/automation/config/{automation_id}",
+            json=config,
+        )
+        resp.raise_for_status()
+        return {"id": automation_id, "updated": True}
