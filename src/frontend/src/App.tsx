@@ -3,8 +3,11 @@ import { checkAuth, loginUrl, type User } from "./api/auth";
 import { deleteSession, listSessions } from "./api/sessions";
 import Chat from "./components/Chat";
 import ModelSelector from "./components/ModelSelector";
+import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
 import type { SessionInfo } from "./types";
+
+type Page = "chat" | "settings";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -12,6 +15,7 @@ export default function App() {
   const [model, setModel] = useState("google-gla:gemini-3-flash-preview");
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<Page>("chat");
   // chatKey only changes on explicit user actions (new chat, select session),
   // NOT when a session is auto-created mid-stream.
   const [chatKey, setChatKey] = useState("__new__");
@@ -36,11 +40,13 @@ export default function App() {
   const handleNewChat = useCallback(() => {
     setActiveSessionId(null);
     setChatKey("__new__" + Date.now());
+    setCurrentPage("chat");
   }, []);
 
   const handleSelectSession = useCallback((id: string) => {
     setActiveSessionId(id);
     setChatKey(id);
+    setCurrentPage("chat");
   }, []);
 
   const handleDeleteSession = useCallback(
@@ -80,20 +86,13 @@ export default function App() {
     );
   }
 
-  // Not authenticated — show login
+  // Not authenticated — redirect to login (only reached in non-addon mode,
+  // since addon mode auto-authenticates via HA Ingress headers)
   if (!user) {
+    window.location.href = loginUrl();
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-950">
-        <div className="flex flex-col items-center gap-6 rounded-xl border border-gray-800 bg-gray-900 px-12 py-10">
-          <h1 className="text-2xl font-semibold text-gray-100">HA Agent</h1>
-          <p className="text-sm text-gray-400">Sign in to continue</p>
-          <a
-            href={loginUrl()}
-            className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-200"
-          >
-            Sign in with Google
-          </a>
-        </div>
+      <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400">
+        Redirecting to login…
       </div>
     );
   }
@@ -104,26 +103,36 @@ export default function App() {
       <Sidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
+        currentPage={currentPage}
         onSelectSession={handleSelectSession}
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
+        onNavigate={setCurrentPage}
         user={user}
       />
 
       {/* Main content */}
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-gray-800 px-6 py-3">
-          <h1 className="text-lg font-semibold">HA Agent</h1>
-          <ModelSelector selected={model} onSelect={setModel} />
+          <h1 className="text-lg font-semibold">
+            {currentPage === "settings" ? "Settings" : "HA Agent"}
+          </h1>
+          {currentPage === "chat" && (
+            <ModelSelector selected={model} onSelect={setModel} />
+          )}
         </header>
 
         <main className="flex-1 overflow-hidden">
-          <Chat
-            key={chatKey}
-            model={model}
-            sessionId={activeSessionId}
-            onSessionCreated={handleSessionCreated}
-          />
+          {currentPage === "settings" ? (
+            <Settings />
+          ) : (
+            <Chat
+              key={chatKey}
+              model={model}
+              sessionId={activeSessionId}
+              onSessionCreated={handleSessionCreated}
+            />
+          )}
         </main>
       </div>
     </div>

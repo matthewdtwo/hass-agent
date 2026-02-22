@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import secrets
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +43,18 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_session
     ON messages(session_id, id);
+
+CREATE TABLE IF NOT EXISTS access_tokens (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id),
+    name       TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
+    last_used  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_user ON access_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_tokens_hash ON access_tokens(token_hash);
 """
 
 
@@ -229,3 +243,72 @@ async def save_display_message(
         (session_id, role, content, tc_json, _now()),
     )
     await db.commit()
+
+
+# ------------------------------------------------------------------
+# Access tokens
+# ------------------------------------------------------------------
+
+
+def _hash_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+async def create_access_token(
+    db: aiosqlite.Connection, user_id: str, name: str
+) -> tuple[dict[str, Any], str]:
+    """Create a new access token. Returns (token_info, raw_token)."""
+    token_id = uuid.uuid4().hex
+    raw = "haa_" + secrets.token_hex(32)
+    now = _now()
+    await db.execute(
+        "INSERT INTO access_tokens (id, user_id, name, token_hash, created_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (token_id, user_id, name, _hash_token(raw), now),
+    )
+    await db.commit()
+    return {"id": token_id, "name": name, "created_at": now, "last_used": None}, raw
+
+
+async def list_access_tokens(
+    db: aiosqlite.Connection, user_id: str
+) -> list[dict[str, Any]]:
+    cursor = await db.execute(
+        "SELECT id, name, created_at, last_used FROM access_tokens "
+        "WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,),
+    )
+    return [dict(r) for r in await cursor.fetchall()]
+
+
+async def delete_access_token(
+    db: aiosqlite.Connection, token_id: str, user_id: str
+) -> bool:
+    cursor = await db.execute(
+        "DELETE FROM access_tokens WHERE id = ? AND user_id = ?",
+        (token_id, user_id),
+    )
+    await db.commit()
+    return cursor.rowcount > 0
+
+
+async def get_user_by_token(
+    db: aiosqlite.Connection, raw_token: str
+) -> dict[str, Any] | None:
+    """Look up a user by raw bearer token. Updates last_used on hit."""
+    h = _hash_token(raw_token)
+    cursor = await db.execute(
+        "SELECT u.id, u.email, u.name, u.picture, t.id AS token_id "
+        "FROM access_tokens t JOIN users u ON t.user_id = u.id "
+        "WHERE t.token_hash = ?",
+        (h,),
+    )
+    row = await cursor.fetchone()
+    if not row:
+        return None
+    await db.execute(
+        "UPDATE access_tokens SET last_used = ? WHERE id = ?",
+        (_now(), row["token_id"]),
+    )
+    await db.commit()
+    return {"id": row["id"], "email": row["email"], "name": row["name"], "picture": row["picture"]}

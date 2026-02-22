@@ -16,12 +16,12 @@ oauth.register(
 
 
 def get_current_user(request: Request) -> dict | None:
-    """Return user dict from session, or None if not authenticated."""
-    return request.session.get("user")
+    """Return user dict from session or Bearer token, or None."""
+    return request.session.get("user") or getattr(request.state, "token_user", None)
 
 
 def require_user(request: Request) -> dict:
-    """Return user dict from session, or raise 401."""
+    """Return user dict from session or Bearer token, or raise 401."""
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")

@@ -21,7 +21,10 @@ export function useAgentChat({
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const base = `${protocol}//${window.location.host}/ws/chat`;
+    // Use the current page's path as the base so the WS URL works correctly
+    // whether served directly or behind HA Ingress (which prefixes the path).
+    const basePath = window.location.pathname.replace(/\/$/, "");
+    const base = `${protocol}//${window.location.host}${basePath}/ws/chat`;
     const url = sessionId ? `${base}?session_id=${sessionId}` : base;
     const ws = new WebSocket(url);
     wsRef.current = ws;

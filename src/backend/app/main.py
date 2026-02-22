@@ -1,20 +1,36 @@
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import HTTPConnection
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.config import settings
-from app.db import close_db, init_db
+from app.db import close_db, get_or_create_user, get_user_by_token, init_db
 from app.ha_client import HAClient
-from app.routers import auth, chat, models, sessions
+from app.routers import auth, chat, models, sessions, tokens
+from app.routers import config as config_router
+
+_FRONTEND_DIR = Path(
+    os.environ.get(
+        "FRONTEND_DIR",
+        str(Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"),
+    )
+)
 
 
 class AuthMiddleware:
-    """Reject unauthenticated requests to /api and /ws (except /api/auth)."""
+    """Reject unauthenticated requests to /api and /ws (except /api/auth).
+
+    In addon mode: auto-authenticates via the X-Hass-User-Id header that
+    HA Ingress injects, so the login screen is never shown.
+    Outside addon mode: supports session cookies and Bearer tokens.
+    """
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -26,7 +42,12 @@ class AuthMiddleware:
 
         path: str = scope["path"]
 
-        # Allow auth endpoints and OAuth callback through
+        # Static assets and non-API paths pass through freely
+        if not path.startswith("/api") and not path.startswith("/ws"):
+            await self.app(scope, receive, send)
+            return
+
+        # Always allow auth endpoints and OAuth callback
         if path.startswith("/api/auth") or path.startswith("/oauth"):
             await self.app(scope, receive, send)
             return
@@ -36,17 +57,42 @@ class AuthMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Require auth for /api routes
-        if path.startswith("/api") or path.startswith("/ws"):
-            conn = HTTPConnection(scope)
+        conn = HTTPConnection(scope)
+
+        # ── Addon mode: trust HA Ingress, auto-create session ────────────
+        if settings.addon_mode:
             if not conn.session.get("user"):
-                response = JSONResponse(
-                    {"detail": "Not authenticated"}, status_code=401
+                headers = dict(scope.get("headers", []))
+                ha_user_id = headers.get(b"x-hass-user-id", b"").decode()
+                name = (
+                    headers.get(b"x-remote-user-display-name", b"").decode()
+                    or "HA User"
                 )
-                await response(scope, receive, send)
+                email = f"ha_{ha_user_id}@ha.local" if ha_user_id else "ha_admin@ha.local"
+                db = scope["app"].state.db
+                user = await get_or_create_user(db, email, name)
+                conn.session["user"] = user
+            await self.app(scope, receive, send)
+            return
+
+        # ── Standard mode: session cookie or Bearer token ─────────────────
+        if conn.session.get("user"):
+            await self.app(scope, receive, send)
+            return
+
+        auth_header = dict(scope.get("headers", [])).get(b"authorization", b"").decode()
+        if auth_header.startswith("Bearer "):
+            raw_token = auth_header[7:]
+            user = await get_user_by_token(scope["app"].state.db, raw_token)
+            if user:
+                scope["state"] = {**scope.get("state", {}), "token_user": user}
+                await self.app(scope, receive, send)
                 return
 
-        await self.app(scope, receive, send)
+        response = JSONResponse(
+            {"detail": "Not authenticated"}, status_code=401
+        )
+        await response(scope, receive, send)
 
 
 @asynccontextmanager
@@ -89,3 +135,9 @@ app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(models.router)
 app.include_router(sessions.router)
+app.include_router(tokens.router)
+app.include_router(config_router.router)
+
+# Serve the built frontend — must be mounted last so API routes take priority
+if _FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="static")

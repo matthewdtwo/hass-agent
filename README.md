@@ -130,6 +130,100 @@ Open http://localhost:5173. Select a model from the dropdown and start chatting.
 | `render_template` | Evaluate a Jinja2 template against HA state |
 | `check_config` | Validate HA configuration files |
 
+## API Integration
+
+You can interact with the agent programmatically using long-lived access tokens — useful for connecting other agents, scripts, or automations.
+
+### Creating a token
+
+1. Sign in to the web UI
+2. Click **Settings** in the sidebar
+3. Enter a name and click **Create**
+4. Copy the token immediately — it's only shown once
+
+Tokens look like `haa_<64 hex chars>`.
+
+### Authentication
+
+Include the token as a Bearer token in the `Authorization` header:
+
+```
+Authorization: Bearer haa_your_token_here
+```
+
+### REST endpoints
+
+**Sessions**
+
+```bash
+# List sessions
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/sessions
+
+# Create a session
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "My session"}' \
+  http://localhost:8000/api/sessions
+
+# Get session with messages
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/sessions/{session_id}
+
+# Delete session
+curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/sessions/{session_id}
+```
+
+**Models**
+
+```bash
+# List available models
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/models
+```
+
+**Tokens**
+
+```bash
+# List your tokens
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/tokens
+
+# Create a new token
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "another-agent"}' \
+  http://localhost:8000/api/tokens
+
+# Revoke a token
+curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/tokens/{token_id}
+```
+
+### WebSocket chat
+
+The chat endpoint uses WebSocket at `/ws/chat`. Connect with an optional `session_id` query parameter to resume a conversation:
+
+```
+ws://localhost:8000/ws/chat?session_id=optional_session_id
+```
+
+> **Note:** WebSocket connections currently authenticate via session cookie only. To use the agent from an external script, use the REST endpoints to manage sessions and send messages through a session-authenticated WebSocket, or extend the WebSocket handler to support Bearer tokens.
+
+### Example: Python client
+
+```python
+import httpx
+
+BASE = "http://localhost:8000"
+TOKEN = "haa_your_token_here"
+HEADERS = {"Authorization": f"Bearer {TOKEN}"}
+
+# Create a session
+resp = httpx.post(f"{BASE}/api/sessions", headers=HEADERS, json={"title": "API test"})
+session = resp.json()
+print(f"Session: {session['id']}")
+
+# List available models
+models = httpx.get(f"{BASE}/api/models", headers=HEADERS).json()
+print(f"Models: {[m['id'] for m in models]}")
+```
+
 ## How context management works
 
 With 1000+ entities, dumping raw data into the LLM context is impractical. Tools handle this automatically:

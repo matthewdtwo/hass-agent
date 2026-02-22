@@ -1,6 +1,6 @@
 import type { DisplayMessage, SessionInfo } from "../types";
 
-const BASE = "/api/sessions";
+const BASE = "api/sessions";
 
 export async function listSessions(): Promise<SessionInfo[]> {
   const resp = await fetch(BASE);

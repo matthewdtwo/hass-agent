@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Relative base so asset paths work under HA Ingress (which prefixes the URL)
+  base: "./",
   server: {
     proxy: {
       "/api": "http://localhost:8000",
