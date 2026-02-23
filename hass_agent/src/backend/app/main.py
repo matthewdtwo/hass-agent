@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -99,8 +100,13 @@ class AuthMiddleware:
         await response(scope, receive, send)
 
 
+logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    token_status = f"set ({len(settings.hass_token)} chars)" if settings.hass_token else "EMPTY"
+    logger.info("Starting HA Agent: url=%s token=%s addon_mode=%s", settings.hass_url, token_status, settings.addon_mode)
     app.state.ha_client = HAClient(settings.hass_url, settings.hass_token)
     await app.state.ha_client.connect()
     app.state.db = await init_db(settings.db_path)
