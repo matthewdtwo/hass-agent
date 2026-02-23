@@ -10,7 +10,7 @@ export default function ModelSelector({ selected, onSelect }: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
 
   useEffect(() => {
-    fetch("/api/models")
+    fetch("api/models")
       .then((r) => {
         if (!r.ok) return [];
         return r.json();
