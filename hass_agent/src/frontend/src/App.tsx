@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { checkAuth, loginUrl, type User } from "./api/auth";
+import { getConfig } from "./api/config";
 import { deleteSession, listSessions } from "./api/sessions";
 import Chat from "./components/Chat";
 import ModelSelector from "./components/ModelSelector";
@@ -12,7 +13,8 @@ type Page = "chat" | "settings";
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [model, setModel] = useState("google-gla:gemini-3-flash-preview");
+  // Empty string until config loads; ModelSelector falls back to first available
+  const [model, setModel] = useState("");
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("chat");
@@ -20,7 +22,7 @@ export default function App() {
   // NOT when a session is auto-created mid-stream.
   const [chatKey, setChatKey] = useState("__new__");
 
-  // Check auth on mount
+  // Check auth on mount and load preferred model from config
   useEffect(() => {
     checkAuth()
       .then((u) => {
@@ -28,6 +30,9 @@ export default function App() {
         setAuthChecked(true);
       })
       .catch(() => setAuthChecked(true));
+    getConfig()
+      .then((c) => { if (c.preferred_model) setModel(c.preferred_model); })
+      .catch(() => {});
   }, []);
 
   // Load sessions once authenticated

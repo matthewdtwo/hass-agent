@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     ollama_host: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
+    preferred_model: str = ""
     db_path: str = "data/hass_agent.db"
 
     # Auth

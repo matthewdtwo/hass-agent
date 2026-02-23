@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getConfig, updateConfig, type AddonConfig } from "../api/config";
+import type { ModelInfo } from "../types";
 import {
   createToken,
   deleteToken,
@@ -44,6 +45,8 @@ function ConfigSection() {
   const [ollamaHost, setOllamaHost] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("");
+  const [preferredModel, setPreferredModel] = useState("");
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,8 +58,13 @@ function ConfigSection() {
         setOllamaHost(c.ollama_host);
         setGeminiKey(c.gemini_api_key); // will be "***" or ""
         setGeminiModel(c.gemini_model);
+        setPreferredModel(c.preferred_model);
       })
       .catch(() => setError("Could not load configuration."));
+    fetch("api/models")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setAvailableModels)
+      .catch(() => {});
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -68,6 +76,7 @@ function ConfigSection() {
         // Only send the key if the user typed a new one (not the masked placeholder)
         ...(geminiKey !== "***" ? { gemini_api_key: geminiKey } : {}),
         gemini_model: geminiModel,
+        preferred_model: preferredModel,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -129,6 +138,24 @@ function ConfigSection() {
             placeholder="gemini-2.0-flash"
             className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-gray-500 focus:outline-none"
           />
+        </Field>
+
+        <Field
+          label="Preferred model"
+          hint="Model selected by default when the app loads. Leave blank to auto-select the first available."
+        >
+          <select
+            value={preferredModel}
+            onChange={(e) => setPreferredModel(e.target.value)}
+            className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 focus:border-gray-500 focus:outline-none"
+          >
+            <option value="">(auto — first available)</option>
+            {availableModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.provider.toUpperCase()} — {m.name}
+              </option>
+            ))}
+          </select>
         </Field>
       </div>
 

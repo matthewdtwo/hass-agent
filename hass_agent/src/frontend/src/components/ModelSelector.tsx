@@ -15,8 +15,15 @@ export default function ModelSelector({ selected, onSelect }: Props) {
         if (!r.ok) return [];
         return r.json();
       })
-      .then(setModels)
+      .then((loaded: ModelInfo[]) => {
+        setModels(loaded);
+        // If the current selection isn't in the list, auto-pick the first available
+        if (loaded.length > 0 && !loaded.find((m) => m.id === selected)) {
+          onSelect(loaded[0].id);
+        }
+      })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const grouped = models.reduce<Record<string, ModelInfo[]>>((acc, m) => {

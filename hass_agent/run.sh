@@ -22,10 +22,12 @@ if [ -f "$OPTIONS" ]; then
     OLLAMA_HOST=$(read_option ollama_host "")
     GEMINI_API_KEY=$(read_option gemini_api_key "")
     GEMINI_MODEL=$(read_option gemini_model "gemini-2.0-flash")
+    PREFERRED_MODEL=$(read_option preferred_model "")
 else
     OLLAMA_HOST=""
     GEMINI_API_KEY=""
     GEMINI_MODEL="gemini-2.0-flash"
+    PREFERRED_MODEL=""
 fi
 
 export HASS_URL="http://supervisor/core"
@@ -33,6 +35,7 @@ export HASS_TOKEN="${SUPERVISOR_TOKEN}"
 export OLLAMA_HOST="${OLLAMA_HOST}"
 export GEMINI_API_KEY="${GEMINI_API_KEY}"
 export GEMINI_MODEL="${GEMINI_MODEL}"
+export PREFERRED_MODEL="${PREFERRED_MODEL}"
 export ADDON_MODE="true"
 export DB_PATH="/data/hass_agent.db"
 export FRONTEND_DIR="/app/frontend/dist"
