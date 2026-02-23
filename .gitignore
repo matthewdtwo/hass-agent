@@ -6,5 +6,5 @@ dist/
 *.pyc
 oauth_credentials.json
 
-src/backend/data/*.db
-src/backend/data/*.db-*
+hass_agent/src/backend/data/hass_agent.db
+hass_agent/src/backend/data/hass_agent.db-*
