@@ -47,7 +47,24 @@ class AuthMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Always allow auth endpoints and OAuth callback
+        conn = HTTPConnection(scope)
+
+        # ── Addon mode: populate session from HA Ingress headers first ────
+        # This must run before any early-returns (including /api/auth/check)
+        # so that checkAuth() sees a user and the frontend never shows login.
+        if settings.addon_mode and not conn.session.get("user"):
+            headers = dict(scope.get("headers", []))
+            ha_user_id = headers.get(b"x-hass-user-id", b"").decode()
+            name = (
+                headers.get(b"x-remote-user-display-name", b"").decode()
+                or "HA User"
+            )
+            email = f"ha_{ha_user_id}@ha.local" if ha_user_id else "ha_admin@ha.local"
+            db = scope["app"].state.db
+            user = await get_or_create_user(db, email, name)
+            conn.session["user"] = user
+
+        # Allow auth endpoints and OAuth callback through
         if path.startswith("/api/auth") or path.startswith("/oauth"):
             await self.app(scope, receive, send)
             return
@@ -57,21 +74,8 @@ class AuthMiddleware:
             await self.app(scope, receive, send)
             return
 
-        conn = HTTPConnection(scope)
-
-        # ── Addon mode: trust HA Ingress, auto-create session ────────────
+        # In addon mode the session is already set above — just continue
         if settings.addon_mode:
-            if not conn.session.get("user"):
-                headers = dict(scope.get("headers", []))
-                ha_user_id = headers.get(b"x-hass-user-id", b"").decode()
-                name = (
-                    headers.get(b"x-remote-user-display-name", b"").decode()
-                    or "HA User"
-                )
-                email = f"ha_{ha_user_id}@ha.local" if ha_user_id else "ha_admin@ha.local"
-                db = scope["app"].state.db
-                user = await get_or_create_user(db, email, name)
-                conn.session["user"] = user
             await self.app(scope, receive, send)
             return
 
