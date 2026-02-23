@@ -2,7 +2,7 @@ name: HA Agent
 version: "1.0.0"
 slug: hass_agent
 description: AI-powered maintenance agent for Home Assistant
-url: https://github.com/yourusername/hass-agent
+url: https://github.com/matthewdtwo/hass-agent
 arch:
   - amd64
   - aarch64
@@ -12,8 +12,8 @@ ingress_port: 8000
 panel_icon: mdi:robot
 panel_title: HA Agent
 options:
-  ollama_host: ""
-  gemini_api_key: ""
+  ollama_host: ~
+  gemini_api_key: ~
   gemini_model: "gemini-2.0-flash"
 schema:
   ollama_host: str?
