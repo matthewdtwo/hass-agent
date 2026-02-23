@@ -27,12 +27,6 @@ COPY --from=frontend-builder /build/dist/ ./frontend/dist/
 
 ENV FRONTEND_DIR=/app/frontend/dist
 
-# Register as an s6-overlay v3 longrun service
-RUN mkdir -p /etc/s6-overlay/s6-rc.d/ha_agent
-COPY run.sh /etc/s6-overlay/s6-rc.d/ha_agent/run
-RUN chmod a+x /etc/s6-overlay/s6-rc.d/ha_agent/run \
-    && echo "longrun" > /etc/s6-overlay/s6-rc.d/ha_agent/type \
-    && mkdir -p /etc/s6-overlay/s6-rc.d/user/contents.d \
-    && touch /etc/s6-overlay/s6-rc.d/user/contents.d/ha_agent
-
-CMD ["/init"]
+COPY run.sh /run.sh
+RUN chmod a+x /run.sh
+CMD ["/run.sh"]
