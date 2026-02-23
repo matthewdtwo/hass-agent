@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.23
 
 # Stage 1: Build frontend
 FROM node:22-alpine AS frontend-builder

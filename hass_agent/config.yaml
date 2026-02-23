@@ -6,7 +6,7 @@ url: https://github.com/matthewdtwo/hass-agent
 arch:
   - amd64
   - aarch64
-  - armv7
+  - armhf
 ingress: true
 ingress_port: 8000
 panel_icon: mdi:robot
