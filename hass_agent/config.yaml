@@ -1,8 +1,9 @@
 name: HA Agent
-version: "1.0.3"
+version: "1.0.4"
 slug: hass_agent
 description: AI-powered maintenance agent for Home Assistant
 url: https://github.com/matthewdtwo/hass-agent
+init: false
 arch:
   - amd64
   - aarch64
