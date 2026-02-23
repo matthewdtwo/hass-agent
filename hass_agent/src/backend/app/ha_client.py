@@ -16,10 +16,14 @@ class HAClient:
     """Async client for Home Assistant REST API."""
 
     def __init__(self, url: str, token: str) -> None:
-        self._url = url.rstrip("/")
-        self._token = token
+        # Ensure the base URL has a trailing slash so that relative paths
+        # (e.g. "api/states") resolve correctly against any path component
+        # (e.g. http://supervisor/core/ + api/states = http://supervisor/core/api/states).
+        self._url = url.rstrip("/") + "/"
+        # Strip whitespace/newlines — SUPERVISOR_TOKEN can have a trailing newline
+        self._token = token.strip()
         self._headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
         }
         self._http: httpx.AsyncClient | None = None
@@ -41,13 +45,13 @@ class HAClient:
 
     async def _get(self, path: str, **params: Any) -> Any:
         assert self._http is not None
-        resp = await self._http.get(f"/api/{path}", params=params or None)
+        resp = await self._http.get(f"api/{path}", params=params or None)
         resp.raise_for_status()
         return resp.json()
 
     async def _post(self, path: str, data: Any = None) -> Any:
         assert self._http is not None
-        resp = await self._http.post(f"/api/{path}", json=data)
+        resp = await self._http.post(f"api/{path}", json=data)
         resp.raise_for_status()
         return resp.json()
 
@@ -100,7 +104,7 @@ class HAClient:
 
     async def get_error_log(self) -> str:
         assert self._http is not None
-        resp = await self._http.get("/api/error_log")
+        resp = await self._http.get("api/error_log")
         resp.raise_for_status()
         return resp.text
 
@@ -122,7 +126,7 @@ class HAClient:
 
     async def render_template(self, template: str) -> str:
         assert self._http is not None
-        resp = await self._http.post("/api/template", json={"template": template})
+        resp = await self._http.post("api/template", json={"template": template})
         resp.raise_for_status()
         return resp.text
 
@@ -135,7 +139,7 @@ class HAClient:
 
     async def _ws_oneshot(self, command: dict[str, Any]) -> Any:
         """Open a short-lived WS connection, send one command, return result."""
-        ws_url = self._url.replace("http", "ws", 1) + "/api/websocket"
+        ws_url = self._url.rstrip("/").replace("http", "ws", 1) + "/api/websocket"
         async with websockets.connect(ws_url) as ws:
             # 1. auth_required
             msg = json.loads(await ws.recv())
@@ -171,7 +175,7 @@ class HAClient:
         automation_id = uuid.uuid4().hex
         assert self._http is not None
         resp = await self._http.post(
-            f"/api/config/automation/config/{automation_id}",
+            f"api/config/automation/config/{automation_id}",
             json=config,
         )
         resp.raise_for_status()
@@ -180,7 +184,7 @@ class HAClient:
     async def get_automation_config(self, automation_id: str) -> dict[str, Any]:
         """Get the editable config for an automation by its config ID."""
         assert self._http is not None
-        resp = await self._http.get(f"/api/config/automation/config/{automation_id}")
+        resp = await self._http.get(f"api/config/automation/config/{automation_id}")
         resp.raise_for_status()
         return resp.json()
 
@@ -188,7 +192,7 @@ class HAClient:
         """Update an existing automation by its config ID."""
         assert self._http is not None
         resp = await self._http.post(
-            f"/api/config/automation/config/{automation_id}",
+            f"api/config/automation/config/{automation_id}",
             json=config,
         )
         resp.raise_for_status()
