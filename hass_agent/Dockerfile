@@ -27,6 +27,6 @@ COPY --from=frontend-builder /build/dist/ ./frontend/dist/
 
 ENV FRONTEND_DIR=/app/frontend/dist
 
-COPY run.sh /run.sh
-RUN chmod a+x /run.sh
-CMD ["/run.sh"]
+# Install as an s6 service so the base image's s6 init stays as PID 1
+COPY run.sh /etc/services.d/ha_agent/run
+RUN chmod a+x /etc/services.d/ha_agent/run
