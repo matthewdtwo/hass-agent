@@ -1,7 +1,7 @@
-#!/bin/sh
-# Read addon options from /data/options.json directly with Python.
-# SUPERVISOR_TOKEN is injected by the HA supervisor as a plain Docker env var
-# so we don't need s6/with-contenv at all.
+#!/usr/bin/with-contenv sh
+# with-contenv makes s6's container environment (including SUPERVISOR_TOKEN)
+# available to this script. Without it, SUPERVISOR_TOKEN is empty because
+# s6 stores supervisor-injected vars in its own env dir, not as plain Docker vars.
 
 OPTIONS="/data/options.json"
 
