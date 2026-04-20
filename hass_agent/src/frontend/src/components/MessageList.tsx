@@ -15,7 +15,7 @@ export default function MessageList({ messages }: Props) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center text-gray-500">
+      <div className="flex flex-1 items-center justify-center text-gray-400 dark:text-gray-500">
         <div className="text-center">
           <p className="text-lg font-medium">HA Maintenance Agent</p>
           <p className="mt-1 text-sm">

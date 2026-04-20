@@ -62,9 +62,12 @@ class AuthMiddleware:
                 headers.get(b"x-remote-user-display-name", b"").decode()
                 or "HA User"
             )
+            is_admin = headers.get(b"x-hass-is-admin", b"0").decode() == "1"
             email = f"ha_{ha_user_id}@ha.local" if ha_user_id else "ha_admin@ha.local"
             db = scope["app"].state.db
             user = await get_or_create_user(db, email, name)
+            user["ha_user_id"] = ha_user_id
+            user["is_admin"] = is_admin
             conn.session["user"] = user
 
         # Allow auth endpoints and OAuth callback through

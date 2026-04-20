@@ -16,7 +16,7 @@ export default function MessageBubble({ message }: Props) {
         className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
           isUser
             ? "bg-blue-600 text-white"
-            : "bg-gray-800 text-gray-200"
+            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
         }`}
       >
         {/* Tool calls */}
@@ -25,20 +25,20 @@ export default function MessageBubble({ message }: Props) {
             {message.toolCalls.map((tc, i) => (
               <div
                 key={i}
-                className="rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-xs"
+                className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-600 dark:bg-gray-900"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-yellow-400">{tc.name}</span>
                   {tc.result ? (
-                    <span className="text-green-400">done</span>
+                    <span className="text-green-600 dark:text-green-400">done</span>
                   ) : (
-                    <span className="animate-pulse text-gray-400">
+                    <span className="animate-pulse text-gray-400 dark:text-gray-500">
                       running...
                     </span>
                   )}
                 </div>
                 {tc.args && Object.keys(tc.args).length > 0 && (
-                  <div className="mt-1 text-gray-500">
+                  <div className="mt-1 text-gray-400 dark:text-gray-500">
                     {Object.entries(tc.args).map(([k, v]) => (
                       <span key={k} className="mr-2">
                         {k}={JSON.stringify(v)}

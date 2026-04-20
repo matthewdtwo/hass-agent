@@ -35,7 +35,7 @@ export default function ModelSelector({ selected, onSelect }: Props) {
     <select
       value={selected}
       onChange={(e) => onSelect(e.target.value)}
-      className="rounded-md border border-gray-600 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 focus:border-blue-500 focus:outline-none"
+      className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
     >
       {Object.entries(grouped).map(([provider, providerModels]) => (
         <optgroup key={provider} label={provider.toUpperCase()}>

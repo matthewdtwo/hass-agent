@@ -3,6 +3,8 @@ export interface User {
   email: string;
   name: string;
   picture?: string;
+  ha_user_id?: string;
+  is_admin?: boolean;
 }
 
 export async function checkAuth(): Promise<User | null> {

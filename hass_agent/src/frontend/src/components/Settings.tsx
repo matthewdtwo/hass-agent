@@ -31,12 +31,18 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-300">{label}</label>
-      {hint && <p className="mt-0.5 text-xs text-gray-500">{hint}</p>}
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+      {hint && <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
       <div className="mt-1.5">{children}</div>
     </div>
   );
 }
+
+const inputClass =
+  "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-400 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-600 dark:focus:border-gray-500";
+
+const btnPrimaryClass =
+  "rounded-lg bg-gray-800 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-300";
 
 // ── Configuration section ────────────────────────────────────────────────────
 
@@ -93,11 +99,11 @@ function ConfigSection() {
 
   return (
     <section>
-      <h2 className="text-xl font-semibold text-gray-100">Configuration</h2>
-      <p className="mt-1 text-sm text-gray-400">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Configuration</h2>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
         AI provider settings. Changes take effect immediately without a restart.
         {config.addon_mode && (
-          <span className="ml-1 text-gray-500">
+          <span className="ml-1 text-gray-400 dark:text-gray-500">
             (also written to <code>/data/options.json</code>)
           </span>
         )}
@@ -113,7 +119,7 @@ function ConfigSection() {
             onChange={(e) => setOllamaHost(e.target.value)}
             type="url"
             placeholder="http://host:11434"
-            className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-gray-500 focus:outline-none"
+            className={inputClass}
           />
         </Field>
 
@@ -127,7 +133,7 @@ function ConfigSection() {
             type="password"
             placeholder={config.gemini_api_key ? "••••••••" : "Paste key here"}
             autoComplete="off"
-            className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-gray-500 focus:outline-none"
+            className={inputClass}
           />
         </Field>
 
@@ -135,8 +141,8 @@ function ConfigSection() {
           <input
             value={geminiModel}
             onChange={(e) => setGeminiModel(e.target.value)}
-            placeholder="gemini-2.0-flash"
-            className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-gray-500 focus:outline-none"
+            placeholder="gemini-3.1-flash-lite-preview"
+            className={inputClass}
           />
         </Field>
 
@@ -147,7 +153,7 @@ function ConfigSection() {
           <select
             value={preferredModel}
             onChange={(e) => setPreferredModel(e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 focus:border-gray-500 focus:outline-none"
+            className={inputClass}
           >
             <option value="">(auto — first available)</option>
             {availableModels.map((m) => (
@@ -159,18 +165,18 @@ function ConfigSection() {
         </Field>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-4 text-sm text-red-500 dark:text-red-400">{error}</p>}
 
       <div className="mt-6 flex items-center gap-4">
         <button
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg bg-gray-100 px-5 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className={btnPrimaryClass}
         >
           {saving ? "Saving…" : "Save"}
         </button>
         {saved && (
-          <span className="text-sm text-green-400">Saved successfully.</span>
+          <span className="text-sm text-green-600 dark:text-green-400">Saved successfully.</span>
         )}
       </div>
     </section>
@@ -212,8 +218,8 @@ function TokensSection() {
 
   return (
     <section>
-      <h2 className="text-xl font-semibold text-gray-100">Access Tokens</h2>
-      <p className="mt-1 text-sm text-gray-400">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Access Tokens</h2>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
         Create long-lived tokens to access the API from external agents.
       </p>
 
@@ -225,12 +231,12 @@ function TokensSection() {
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder="Token name (e.g. my-agent)"
-          className="flex-1 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-gray-500 focus:outline-none"
+          className={inputClass}
         />
         <button
           onClick={handleCreate}
           disabled={!name.trim()}
-          className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className={btnPrimaryClass}
         >
           Create
         </button>
@@ -238,24 +244,24 @@ function TokensSection() {
 
       {/* Newly created token banner */}
       {newToken && (
-        <div className="mt-4 rounded-lg border border-yellow-800 bg-yellow-950/50 p-4">
-          <p className="text-sm font-medium text-yellow-200">
+        <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950/50">
+          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
             Copy your token now — it won't be shown again.
           </p>
           <div className="mt-2 flex items-center gap-2">
-            <code className="flex-1 overflow-x-auto rounded bg-gray-900 px-3 py-2 text-sm text-gray-100">
+            <code className="flex-1 overflow-x-auto rounded bg-white px-3 py-2 text-sm text-gray-900 dark:bg-gray-900 dark:text-gray-100">
               {newToken.token}
             </code>
             <button
               onClick={handleCopy}
-              className="shrink-0 rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-800"
+              className="shrink-0 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
           <button
             onClick={() => setNewToken(null)}
-            className="mt-2 text-xs text-gray-500 hover:text-gray-400"
+            className="mt-2 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
           >
             Dismiss
           </button>
@@ -265,11 +271,11 @@ function TokensSection() {
       {/* Token list */}
       <div className="mt-6">
         {tokens.length === 0 ? (
-          <p className="text-sm text-gray-600">No tokens created yet.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-600">No tokens created yet.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800 text-left text-gray-500">
+              <tr className="border-b border-gray-200 text-left text-gray-500 dark:border-gray-800 dark:text-gray-500">
                 <th className="pb-2 font-medium">Name</th>
                 <th className="pb-2 font-medium">Created</th>
                 <th className="pb-2 font-medium">Last used</th>
@@ -280,17 +286,17 @@ function TokensSection() {
               {tokens.map((t) => (
                 <tr
                   key={t.id}
-                  className="border-b border-gray-800/50 text-gray-300"
+                  className="border-b border-gray-100 text-gray-700 dark:border-gray-800/50 dark:text-gray-300"
                 >
                   <td className="py-2.5">{t.name}</td>
-                  <td className="py-2.5 text-gray-500">{timeAgo(t.created_at)}</td>
-                  <td className="py-2.5 text-gray-500">
+                  <td className="py-2.5 text-gray-400 dark:text-gray-500">{timeAgo(t.created_at)}</td>
+                  <td className="py-2.5 text-gray-400 dark:text-gray-500">
                     {t.last_used ? timeAgo(t.last_used) : "Never"}
                   </td>
                   <td className="py-2.5 text-right">
                     <button
                       onClick={() => handleDelete(t.id)}
-                      className="rounded px-2 py-1 text-gray-600 transition-colors hover:bg-gray-800 hover:text-red-400"
+                      className="rounded px-2 py-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
                     >
                       Revoke
                     </button>
@@ -309,9 +315,9 @@ function TokensSection() {
 
 export default function Settings() {
   return (
-    <div className="mx-auto max-w-2xl space-y-12 px-6 py-8">
+    <div className="mx-auto max-w-2xl space-y-12 overflow-y-auto px-6 py-8">
       <ConfigSection />
-      <hr className="border-gray-800" />
+      <hr className="border-gray-200 dark:border-gray-800" />
       <TokensSection />
     </div>
   );

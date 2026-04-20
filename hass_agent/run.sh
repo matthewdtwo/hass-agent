@@ -21,12 +21,12 @@ except Exception:
 if [ -f "$OPTIONS" ]; then
     OLLAMA_HOST=$(read_option ollama_host "")
     GEMINI_API_KEY=$(read_option gemini_api_key "")
-    GEMINI_MODEL=$(read_option gemini_model "gemini-2.0-flash")
+    GEMINI_MODEL=$(read_option gemini_model "gemini-3.1-flash-lite-preview")
     PREFERRED_MODEL=$(read_option preferred_model "")
 else
     OLLAMA_HOST=""
     GEMINI_API_KEY=""
-    GEMINI_MODEL="gemini-2.0-flash"
+    GEMINI_MODEL="gemini-3.1-flash-lite-preview"
     PREFERRED_MODEL=""
 fi
 
