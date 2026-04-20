@@ -93,7 +93,7 @@ export default function App() {
   // Loading state
   if (!authChecked) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-gray-500 dark:bg-gray-950 dark:text-gray-400">
+      <div className="flex h-dvh items-center justify-center bg-white text-gray-500 dark:bg-gray-950 dark:text-gray-400">
         Loading...
       </div>
     );
@@ -104,14 +104,14 @@ export default function App() {
   if (!user) {
     window.location.href = loginUrl();
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-gray-500 dark:bg-gray-950 dark:text-gray-400">
+      <div className="flex h-dvh items-center justify-center bg-white text-gray-500 dark:bg-gray-950 dark:text-gray-400">
         Redirecting to login…
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <div className="flex h-dvh bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <Sidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
