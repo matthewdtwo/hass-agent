@@ -19,7 +19,7 @@ async def get_models() -> list[ModelInfo]:
     models: list[ModelInfo] = []
 
     # Gemini model from config
-    known_models = {settings.gemini_model, "gemini-3-pro-preview"}
+    known_models = {settings.gemini_model, "gemini-3.1-flash-lite-preview"}
     for model in sorted(known_models):
         models.append(
             ModelInfo(

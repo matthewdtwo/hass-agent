@@ -55,6 +55,22 @@ class HAClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def _patch(self, path: str, data: Any = None) -> Any:
+        assert self._http is not None
+        resp = await self._http.patch(f"api/{path}", json=data)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def _delete(self, path: str) -> Any:
+        assert self._http is not None
+        resp = await self._http.delete(f"api/{path}")
+        resp.raise_for_status()
+        try:
+            return resp.json()
+        except Exception:
+            # Some DELETE endpoints don't return JSON
+            return {"deleted": True}
+
     # ------------------------------------------------------------------
     # States
     # ------------------------------------------------------------------
@@ -197,3 +213,36 @@ class HAClient:
         )
         resp.raise_for_status()
         return {"id": automation_id, "updated": True}
+
+    # ------------------------------------------------------------------
+    # Dashboard/Lovelace management
+    # ------------------------------------------------------------------
+
+    async def get_dashboards(self) -> list[dict[str, Any]]:
+        """List all dashboards."""
+        return await self._get("lovelace/dashboards")
+
+    async def get_dashboard(self, dashboard_id: str) -> dict[str, Any]:
+        """Get dashboard metadata (title, icon, etc)."""
+        return await self._get(f"lovelace/dashboards/{dashboard_id}")
+
+    async def get_dashboard_config(self, dashboard_id: str) -> dict[str, Any]:
+        """Get full dashboard configuration with views and cards."""
+        return await self._get(f"lovelace/config/{dashboard_id}")
+
+    async def create_dashboard(self, title: str, icon: str = "mdi:view-dashboard") -> dict[str, Any]:
+        """Create a new empty dashboard."""
+        return await self._post("lovelace/dashboards", {
+            "title": title,
+            "icon": icon,
+            "show_in_sidebar": True,
+        })
+
+    async def update_dashboard_config(self, dashboard_id: str, config: dict[str, Any]) -> dict[str, Any]:
+        """Update dashboard configuration (views, cards, etc)."""
+        return await self._post(f"lovelace/config/{dashboard_id}", config)
+
+    async def delete_dashboard(self, dashboard_id: str) -> dict[str, Any]:
+        """Delete a dashboard."""
+        return await self._delete(f"lovelace/dashboards/{dashboard_id}")
+

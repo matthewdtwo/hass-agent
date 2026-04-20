@@ -25,6 +25,19 @@ Guidelines:
 - Start broad (summaries/counts) then drill into specifics as needed.
 - For maintenance tasks, explain what you found and suggest concrete fixes.
 - Be concise. Use markdown tables or lists for structured data.
+
+Dashboard Management:
+- When modifying dashboards, always fetch the current config first with \
+  get_dashboard_config to see the complete structure.
+- Provide the COMPLETE updated config when saving — omitted fields will \
+  be removed from the dashboard.
+- To add a card: append it to the views[N]["cards"] array.
+- To update a card: modify the card object in place.
+- To remove a card: delete from the views[N]["cards"] array by index.
+- Always validate that entity IDs exist before adding them to cards.
+- Card types include: 'entities', 'weather', 'gauge', 'history-graph', \
+  'markdown', 'picture', 'thermostat', 'glance', 'map'. Custom cards use \
+  'custom:card-name' format.
 """
 
 
@@ -374,6 +387,144 @@ async def list_scripts(
     total = len(results)
     page = results[offset : offset + limit]
     return {"results": page, "total": total, "showing": len(page), "offset": offset}
+
+
+# ------------------------------------------------------------------
+# Dashboard/Lovelace tools
+# ------------------------------------------------------------------
+
+
+@agent.tool
+async def list_dashboards(ctx: RunContext[AgentDeps]) -> dict:
+    """List all available dashboards.
+
+    Returns:
+        A list of dashboard IDs, titles, and icons that can be used with
+        other dashboard tools.
+    """
+    try:
+        dashboards = await ctx.deps.ha.get_dashboards()
+    except Exception as e:
+        return {"error": f"Failed to fetch dashboards: {e}"}
+
+    results = []
+    for d in dashboards:
+        results.append({
+            "id": d.get("id"),
+            "title": d.get("title"),
+            "icon": d.get("icon"),
+        })
+
+    return {"dashboards": results, "total": len(results)}
+
+
+@agent.tool
+async def get_dashboard_config(
+    ctx: RunContext[AgentDeps],
+    dashboard_id: str,
+) -> dict:
+    """Get the full configuration of a dashboard for inspection or modification.
+
+    This returns the complete dashboard structure including all views and cards.
+    Use this before update_dashboard_config to see the current layout.
+
+    Args:
+        dashboard_id: The dashboard ID (e.g., 'lovelace-1').
+
+    Returns:
+        The dashboard configuration with views and cards. Each card includes
+        its type, entities, and other configuration.
+    """
+    try:
+        config = await ctx.deps.ha.get_dashboard_config(dashboard_id)
+    except Exception as e:
+        return {"error": f"Failed to fetch dashboard config for '{dashboard_id}': {e}"}
+
+    # Summarize the config to keep token usage reasonable
+    summary = {"dashboard_id": dashboard_id}
+    if "views" in config:
+        views_summary = []
+        for i, view in enumerate(config["views"]):
+            view_info = {
+                "index": i,
+                "title": view.get("title", "Untitled"),
+                "icon": view.get("icon"),
+                "card_count": len(view.get("cards", [])),
+                "cards": []
+            }
+            for j, card in enumerate(view.get("cards", [])):
+                card_info = {
+                    "index": j,
+                    "type": card.get("type"),
+                    "title": card.get("title"),
+                }
+                # Include entity references
+                if "entity" in card:
+                    card_info["entity"] = card["entity"]
+                if "entities" in card:
+                    card_info["entities"] = card["entities"]
+                view_info["cards"].append(card_info)
+            views_summary.append(view_info)
+        summary["views"] = views_summary
+
+    # Also include the raw config for reference
+    summary["raw_config"] = config
+    return summary
+
+
+@agent.tool
+async def update_dashboard_config(
+    ctx: RunContext[AgentDeps],
+    dashboard_id: str,
+    config: dict,
+) -> dict:
+    """Update a dashboard's configuration. You must provide the complete
+    configuration — any fields you omit will be removed.
+
+    Always use get_dashboard_config first to fetch the current config, then
+    modify it, then save with this tool. This prevents accidental data loss.
+
+    Args:
+        dashboard_id: The dashboard ID (e.g., 'lovelace-1').
+        config: The complete dashboard configuration object with all views
+                and cards. Must include the views array.
+
+    Returns:
+        Confirmation of the update or an error message.
+    """
+    try:
+        result = await ctx.deps.ha.update_dashboard_config(dashboard_id, config)
+        return {
+            "dashboard_id": dashboard_id,
+            "updated": True,
+            "result": result,
+        }
+    except Exception as e:
+        return {"error": f"Failed to update dashboard '{dashboard_id}': {e}"}
+
+
+@agent.tool
+async def delete_dashboard(
+    ctx: RunContext[AgentDeps],
+    dashboard_id: str,
+) -> dict:
+    """Delete a dashboard. This action is permanent.
+
+    Args:
+        dashboard_id: The dashboard ID to delete (e.g., 'lovelace-1').
+
+    Returns:
+        Confirmation of deletion or an error message.
+    """
+    try:
+        result = await ctx.deps.ha.delete_dashboard(dashboard_id)
+        return {
+            "dashboard_id": dashboard_id,
+            "deleted": True,
+            "result": result,
+        }
+    except Exception as e:
+        return {"error": f"Failed to delete dashboard '{dashboard_id}': {e}"}
 
 
 # ------------------------------------------------------------------
