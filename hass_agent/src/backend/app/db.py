@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     title          TEXT NOT NULL,
     created_at     TEXT NOT NULL,
     updated_at     TEXT NOT NULL,
-    model_history  TEXT NOT NULL DEFAULT '[]'
+    model_history  TEXT NOT NULL DEFAULT '[]',
+    token_usage    TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user
@@ -68,6 +69,12 @@ async def init_db(path: str) -> aiosqlite.Connection:
     # Migrate existing DBs: add user_id column if missing
     try:
         await db.execute("ALTER TABLE sessions ADD COLUMN user_id TEXT REFERENCES users(id)")
+        await db.commit()
+    except Exception:
+        pass  # Column already exists
+    # Migrate: add token_usage column if missing
+    try:
+        await db.execute("ALTER TABLE sessions ADD COLUMN token_usage TEXT NOT NULL DEFAULT '{}'")
         await db.commit()
     except Exception:
         pass  # Column already exists
@@ -151,11 +158,15 @@ async def list_sessions(
 
 async def get_session(db: aiosqlite.Connection, session_id: str) -> dict[str, Any] | None:
     cursor = await db.execute(
-        "SELECT id, user_id, title, created_at, updated_at FROM sessions WHERE id = ?",
+        "SELECT id, user_id, title, created_at, updated_at, token_usage FROM sessions WHERE id = ?",
         (session_id,),
     )
     row = await cursor.fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    d = dict(row)
+    d["token_usage"] = json.loads(d["token_usage"]) if d.get("token_usage") else {}
+    return d
 
 
 async def update_session_title(
@@ -178,6 +189,38 @@ async def touch_session(db: aiosqlite.Connection, session_id: str) -> None:
         "UPDATE sessions SET updated_at = ? WHERE id = ?", (_now(), session_id)
     )
     await db.commit()
+
+
+async def get_token_usage(db: aiosqlite.Connection, session_id: str) -> dict[str, int]:
+    cursor = await db.execute(
+        "SELECT token_usage FROM sessions WHERE id = ?", (session_id,)
+    )
+    row = await cursor.fetchone()
+    if not row or not row["token_usage"]:
+        return {"input_tokens": 0, "output_tokens": 0, "context_tokens": 0}
+    return json.loads(row["token_usage"])
+
+
+async def accumulate_token_usage(
+    db: aiosqlite.Connection,
+    session_id: str,
+    input_tokens: int,
+    output_tokens: int,
+    context_tokens: int,
+) -> dict[str, int]:
+    """Add this turn's tokens to the session running totals and return the new totals."""
+    current = await get_token_usage(db, session_id)
+    updated = {
+        "input_tokens": current.get("input_tokens", 0) + input_tokens,
+        "output_tokens": current.get("output_tokens", 0) + output_tokens,
+        "context_tokens": context_tokens,  # always the latest (current window size)
+    }
+    await db.execute(
+        "UPDATE sessions SET token_usage = ? WHERE id = ?",
+        (json.dumps(updated), session_id),
+    )
+    await db.commit()
+    return updated
 
 
 # ------------------------------------------------------------------

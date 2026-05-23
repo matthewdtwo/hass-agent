@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { ChatMessage, ToolCall, WSEvent } from "../types";
+import type { ChatMessage, ToolCall, TokenUsage, WSEvent } from "../types";
 
 interface UseAgentChatOptions {
   sessionId: string | null;
@@ -12,6 +12,7 @@ export function useAgentChat({
 }: UseAgentChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingToolCalls = useRef<ToolCall[]>([]);
   const onSessionCreatedRef = useRef(onSessionCreated);
@@ -109,6 +110,14 @@ export function useAgentChat({
             }
             break;
 
+          case "usage":
+            setTokenUsage({
+              input_tokens: data.input_tokens ?? 0,
+              output_tokens: data.output_tokens ?? 0,
+              context_tokens: data.context_tokens ?? 0,
+            });
+            break;
+
           case "done":
             setIsStreaming(false);
             break;
@@ -143,6 +152,7 @@ export function useAgentChat({
   return {
     messages,
     isStreaming,
+    tokenUsage,
     sendMessage,
     connect,
     disconnect,

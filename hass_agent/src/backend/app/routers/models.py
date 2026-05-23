@@ -57,4 +57,35 @@ async def get_models() -> list[ModelInfo]:
         except Exception as exc:
             logger.warning("Failed to reach Ollama at %s: %s: %s", url, type(exc).__name__, exc)
 
+    # OpenAI-compatible models (e.g. llama.cpp server)
+    if not settings.openai_base_url:
+        logger.debug("OPENAI_BASE_URL not set, skipping OpenAI model discovery")
+    else:
+        url = f"{settings.openai_base_url.rstrip('/')}/v1/models"
+        logger.info("Fetching OpenAI-compatible models from %s", url)
+        headers = {}
+        if settings.openai_api_key:
+            headers["Authorization"] = f"Bearer {settings.openai_api_key}"
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(url, headers=headers)
+                logger.info("OpenAI-compatible server response: %s", resp.status_code)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    openai_models = data.get("data", [])
+                    logger.info("OpenAI server returned %d models", len(openai_models))
+                    for m in openai_models:
+                        name = m["id"]
+                        models.append(
+                            ModelInfo(
+                                id=f"openai:{name}",
+                                provider="openai",
+                                name=name,
+                            )
+                        )
+                else:
+                    logger.warning("OpenAI server returned non-200: %s — %s", resp.status_code, resp.text[:200])
+        except Exception as exc:
+            logger.warning("Failed to reach OpenAI server at %s: %s: %s", url, type(exc).__name__, exc)
+
     return models

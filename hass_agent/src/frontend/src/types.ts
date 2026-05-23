@@ -8,6 +8,7 @@ export type WSEventType =
   | "token"
   | "tool_call"
   | "tool_result"
+  | "usage"
   | "done"
   | "error"
   | "session_created";
@@ -19,6 +20,16 @@ export interface WSEvent {
   args?: Record<string, unknown>;
   session_id?: string;
   title?: string;
+  // usage fields
+  input_tokens?: number;
+  output_tokens?: number;
+  context_tokens?: number;
+}
+
+export interface TokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+  context_tokens: number;
 }
 
 export interface ToolCall {

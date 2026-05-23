@@ -7,6 +7,7 @@ export default defineConfig({
   // Relative base so asset paths work under HA Ingress (which prefixes the URL)
   base: "./",
   server: {
+    host: "0.0.0.0",
     proxy: {
       "/api": "http://localhost:8000",
       "/oauth": "http://localhost:8000",

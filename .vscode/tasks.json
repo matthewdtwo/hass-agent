@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install backend deps",
+      "type": "shell",
+      "command": "cd hass_agent/src/backend && python3 -m venv .venv && .venv/bin/pip install -e .",
+      "inAgents": true,
+      "runOptions": { "runOn": "worktreeCreated" }
+    },
+    {
+      "label": "Install frontend deps",
+      "type": "shell",
+      "command": "cd hass_agent/src/frontend && npm install",
+      "inAgents": true,
+      "runOptions": { "runOn": "worktreeCreated" }
+    },
+    {
+      "label": "Start backend",
+      "type": "shell",
+      "command": "cd hass_agent/src/backend && .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+      "inAgents": true
+    },
+    {
+      "label": "Start frontend",
+      "type": "shell",
+      "command": "cd hass_agent/src/frontend && npm run dev",
+      "inAgents": true
+    }
+  ]
+}

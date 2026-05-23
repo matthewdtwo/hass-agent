@@ -12,10 +12,12 @@ from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.providers.ollama import OllamaProvider
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.agent import AgentDeps, agent
 from app.config import settings
 from app.db import (
+    accumulate_token_usage,
     create_session,
     get_message_history,
     get_session,
@@ -28,8 +30,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
 
-class OllamaChatModel(OpenAIChatModel):
-    """OpenAI-compatible model that avoids content=None for Ollama compatibility."""
+def _to_json_str(content: object) -> str:
+    """Serialize tool result content to a JSON string, falling back to str()."""
+    if isinstance(content, str):
+        try:
+            # Already a JSON string? Round-trip to normalise (Python repr → real JSON)
+            parsed = json.loads(content)
+            return json.dumps(parsed, indent=2)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # Try eval as Python literal (handles single-quote dicts from HA tools)
+        try:
+            import ast
+            parsed = ast.literal_eval(content)
+            return json.dumps(parsed, indent=2)
+        except Exception:
+            return content
+    try:
+        return json.dumps(content, indent=2)
+    except Exception:
+        return str(content)
+
+
+class _OpenAICompatibleChatModel(OpenAIChatModel):
+    """OpenAI-compatible model that avoids content=None for servers like Ollama and llama.cpp."""
 
     @dataclass
     class _MapModelResponseContext(OpenAIChatModel._MapModelResponseContext):
@@ -40,11 +64,20 @@ class OllamaChatModel(OpenAIChatModel):
             return msg
 
 
+# Keep alias for any references
+OllamaChatModel = _OpenAICompatibleChatModel
+
+
 def _resolve_model(model_id: str):
     """Map a model ID string to a PydanticAI model."""
     if model_id.startswith("ollama:"):
         model_name = model_id.removeprefix("ollama:")
-        return OllamaChatModel(model_name, provider=OllamaProvider(base_url=f"{settings.ollama_host}/v1"))
+        return _OpenAICompatibleChatModel(model_name, provider=OllamaProvider(base_url=f"{settings.ollama_host}/v1"))
+    if model_id.startswith("openai:"):
+        model_name = model_id.removeprefix("openai:")
+        base_url = f"{settings.openai_base_url.rstrip('/')}/v1"
+        api_key = settings.openai_api_key or "not-needed"
+        return _OpenAICompatibleChatModel(model_name, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
     if model_id.startswith("google-gla:"):
         model_name = model_id.removeprefix("google-gla:")
         return GoogleModel(
@@ -136,7 +169,7 @@ async def chat_ws(ws: WebSocket, session_id: str | None = None) -> None:
                             async with node.stream(run.ctx) as handle_stream:
                                 async for event in handle_stream:
                                     if isinstance(event, FunctionToolResultEvent):
-                                        result_str = str(event.result.content)[:500]
+                                        result_str = _to_json_str(event.result.content)
                                         # Update matching tool call with result
                                         for tc in tool_calls_display:
                                             if tc["name"] == event.result.tool_name and "result" not in tc:
@@ -151,6 +184,18 @@ async def chat_ws(ws: WebSocket, session_id: str | None = None) -> None:
                     # Save conversation history for multi-turn
                     if run.result:
                         message_history = run.result.all_messages()
+
+                    # Capture and persist token usage
+                    run_usage = run.usage()
+                    assert session_id is not None
+                    totals = await accumulate_token_usage(
+                        db,
+                        session_id,
+                        input_tokens=run_usage.input_tokens,
+                        output_tokens=run_usage.output_tokens,
+                        context_tokens=run_usage.input_tokens,
+                    )
+                    await ws.send_json({"type": "usage", **totals})
 
             except Exception as e:
                 logger.exception("Agent run error")
