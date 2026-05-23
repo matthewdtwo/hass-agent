@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _OPTIONS_FILE = Path("/data/options.json")
+_USER_CONFIG_FILE = Path("data/user_config.json")
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -37,6 +38,12 @@ settings = Settings()
 # In addon mode, overlay options from /data/options.json
 if settings.addon_mode and _OPTIONS_FILE.exists():
     _opts = json.loads(_OPTIONS_FILE.read_text())
+    for _key, _val in _opts.items():
+        if hasattr(settings, _key) and _val:
+            setattr(settings, _key, _val)
+# In non-addon mode, overlay persisted user config from data/user_config.json
+elif not settings.addon_mode and _USER_CONFIG_FILE.exists():
+    _opts = json.loads(_USER_CONFIG_FILE.read_text())
     for _key, _val in _opts.items():
         if hasattr(settings, _key) and _val:
             setattr(settings, _key, _val)

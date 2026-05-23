@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.config import settings
+from app.config import settings, _OPTIONS_FILE, _USER_CONFIG_FILE
 
 router = APIRouter(prefix="/api/config", tags=["config"])
-
-_OPTIONS_FILE = Path("/data/options.json")
 
 
 class ConfigUpdate(BaseModel):
@@ -40,7 +37,7 @@ async def update_config(data: ConfigUpdate):
     if data.preferred_model is not None:
         updates["preferred_model"] = data.preferred_model
 
-    # Persist to /data/options.json in addon mode
+    # Persist settings
     if settings.addon_mode:
         existing: dict = {}
         if _OPTIONS_FILE.exists():
@@ -48,6 +45,13 @@ async def update_config(data: ConfigUpdate):
         existing.update(updates)
         _OPTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
         _OPTIONS_FILE.write_text(json.dumps(existing, indent=2))
+    else:
+        existing: dict = {}
+        if _USER_CONFIG_FILE.exists():
+            existing = json.loads(_USER_CONFIG_FILE.read_text())
+        existing.update(updates)
+        _USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _USER_CONFIG_FILE.write_text(json.dumps(existing, indent=2))
 
     # Update in-memory settings
     for key, val in updates.items():

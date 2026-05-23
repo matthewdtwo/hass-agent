@@ -88,7 +88,7 @@ function ConfigSection() {
     } finally {
       setSaving(false);
     }
-  }, [geminiKey, geminiModel]);
+  }, [geminiKey, geminiModel, preferredModel]);
 
   if (!config) {
     return <p className="text-sm text-gray-500">Loading…</p>;
