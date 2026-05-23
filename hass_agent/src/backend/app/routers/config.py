@@ -14,7 +14,6 @@ _OPTIONS_FILE = Path("/data/options.json")
 
 
 class ConfigUpdate(BaseModel):
-    ollama_host: str | None = None
     gemini_api_key: str | None = None
     gemini_model: str | None = None
     preferred_model: str | None = None
@@ -23,7 +22,6 @@ class ConfigUpdate(BaseModel):
 @router.get("")
 async def get_config():
     return {
-        "ollama_host": settings.ollama_host,
         # Mask the key — show asterisks if set, empty string if not
         "gemini_api_key": "***" if settings.gemini_api_key else "",
         "gemini_model": settings.gemini_model,
@@ -35,8 +33,6 @@ async def get_config():
 @router.post("")
 async def update_config(data: ConfigUpdate):
     updates: dict = {}
-    if data.ollama_host is not None:
-        updates["ollama_host"] = data.ollama_host
     if data.gemini_api_key is not None and data.gemini_api_key != "***":
         updates["gemini_api_key"] = data.gemini_api_key
     if data.gemini_model is not None:

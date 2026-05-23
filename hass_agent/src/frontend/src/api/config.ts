@@ -1,5 +1,4 @@
 export interface AddonConfig {
-  ollama_host: string;
   /** Masked as "***" when set; send the real value to update. */
   gemini_api_key: string;
   gemini_model: string;
@@ -14,7 +13,6 @@ export async function getConfig(): Promise<AddonConfig> {
 }
 
 export interface ConfigUpdate {
-  ollama_host?: string;
   gemini_api_key?: string;
   gemini_model?: string;
   preferred_model?: string;

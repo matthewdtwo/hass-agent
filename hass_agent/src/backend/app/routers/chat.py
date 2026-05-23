@@ -11,7 +11,6 @@ from pydantic_ai.messages import FunctionToolResultEvent
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.google import GoogleProvider
-from pydantic_ai.providers.ollama import OllamaProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.agent import AgentDeps, agent
@@ -53,7 +52,7 @@ def _to_json_str(content: object) -> str:
 
 
 class _OpenAICompatibleChatModel(OpenAIChatModel):
-    """OpenAI-compatible model that avoids content=None for servers like Ollama and llama.cpp."""
+    """OpenAI-compatible model that avoids content=None for servers like llama.cpp."""
 
     @dataclass
     class _MapModelResponseContext(OpenAIChatModel._MapModelResponseContext):
@@ -64,15 +63,9 @@ class _OpenAICompatibleChatModel(OpenAIChatModel):
             return msg
 
 
-# Keep alias for any references
-OllamaChatModel = _OpenAICompatibleChatModel
-
 
 def _resolve_model(model_id: str):
     """Map a model ID string to a PydanticAI model."""
-    if model_id.startswith("ollama:"):
-        model_name = model_id.removeprefix("ollama:")
-        return _OpenAICompatibleChatModel(model_name, provider=OllamaProvider(base_url=f"{settings.ollama_host}/v1"))
     if model_id.startswith("openai:"):
         model_name = model_id.removeprefix("openai:")
         base_url = f"{settings.openai_base_url.rstrip('/')}/v1"

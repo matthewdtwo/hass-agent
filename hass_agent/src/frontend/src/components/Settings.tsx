@@ -48,7 +48,6 @@ const btnPrimaryClass =
 
 function ConfigSection() {
   const [config, setConfig] = useState<AddonConfig | null>(null);
-  const [ollamaHost, setOllamaHost] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("");
   const [preferredModel, setPreferredModel] = useState("");
@@ -61,7 +60,6 @@ function ConfigSection() {
     getConfig()
       .then((c) => {
         setConfig(c);
-        setOllamaHost(c.ollama_host);
         setGeminiKey(c.gemini_api_key); // will be "***" or ""
         setGeminiModel(c.gemini_model);
         setPreferredModel(c.preferred_model);
@@ -78,7 +76,6 @@ function ConfigSection() {
     setError(null);
     try {
       await updateConfig({
-        ollama_host: ollamaHost,
         // Only send the key if the user typed a new one (not the masked placeholder)
         ...(geminiKey !== "***" ? { gemini_api_key: geminiKey } : {}),
         gemini_model: geminiModel,
@@ -91,7 +88,7 @@ function ConfigSection() {
     } finally {
       setSaving(false);
     }
-  }, [ollamaHost, geminiKey, geminiModel]);
+  }, [geminiKey, geminiModel]);
 
   if (!config) {
     return <p className="text-sm text-gray-500">Loading…</p>;
@@ -110,19 +107,6 @@ function ConfigSection() {
       </p>
 
       <div className="mt-6 space-y-5">
-        <Field
-          label="Ollama host"
-          hint="Full URL of your Ollama instance, e.g. http://192.168.1.10:11434"
-        >
-          <input
-            value={ollamaHost}
-            onChange={(e) => setOllamaHost(e.target.value)}
-            type="url"
-            placeholder="http://host:11434"
-            className={inputClass}
-          />
-        </Field>
-
         <Field
           label="Gemini API key"
           hint="Google AI Studio key. Leave blank to keep the existing key."

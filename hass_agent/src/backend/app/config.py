@@ -15,7 +15,6 @@ class Settings(BaseSettings):
 
     hass_url: str = "http://supervisor/core"
     hass_token: str = ""
-    ollama_host: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.1-flash-lite-preview"
     preferred_model: str = ""

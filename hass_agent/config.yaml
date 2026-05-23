@@ -14,14 +14,12 @@ ingress_port: 8000
 panel_icon: mdi:robot
 panel_title: HA Agent
 options:
-  ollama_host: ~
   gemini_api_key: ~
   gemini_model: "gemini-3.1-flash-lite-preview"
   preferred_model: ~
   openai_api_key: ~
   openai_base_url: ~
 schema:
-  ollama_host: str?
   gemini_api_key: str?
   gemini_model: str?
   preferred_model: str?
