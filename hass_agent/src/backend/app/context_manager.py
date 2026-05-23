@@ -25,7 +25,7 @@ _summarizer: Agent[None, str] = Agent(
 
 
 def _estimate_tokens(messages: list[ModelMessage]) -> int:
-    """Rough token estimate: 1 token ≈ 4 characters."""
+    """Conservative token estimate: 1 token ≈ 3 characters (accounts for code/JSON density)."""
     total = 0
     for msg in messages:
         for part in msg.parts:
@@ -37,7 +37,12 @@ def _estimate_tokens(messages: list[ModelMessage]) -> int:
             args = getattr(part, "args", None)
             if args is not None:
                 total += len(str(args))
-    return total // 4
+    return total // 3
+
+
+# Tokens reserved for system prompt + tool definitions + current user message.
+# This headroom is NOT in message_history but IS counted by the model.
+_SYSTEM_OVERHEAD_TOKENS = 4096
 
 
 def _messages_to_transcript(messages: list[ModelMessage]) -> str:
@@ -77,20 +82,24 @@ async def manage_context(
         return messages, None
 
     total = _estimate_tokens(messages)
-    threshold = int(max_tokens * 0.85)
+    # Effective token budget for message history: subtract fixed overhead for
+    # system prompt + tool definitions + current user message.
+    history_budget = max(max_tokens - _SYSTEM_OVERHEAD_TOKENS, max_tokens // 2)
+    threshold = int(history_budget * 0.85)
 
     if total <= threshold:
         return messages, None
 
     logger.info(
-        "Context limit approaching (~%d tokens estimated, threshold %d); "
+        "Context limit approaching (~%d tokens estimated, threshold %d / history budget %d); "
         "applying sliding window + summarization",
         total,
         threshold,
+        history_budget,
     )
 
-    # Walk newest → oldest, accumulate until 60% of budget is filled
-    recent_budget_chars = int(max_tokens * 0.60) * 4
+    # Walk newest → oldest, accumulate until 60% of history budget is filled
+    recent_budget_chars = int(history_budget * 0.60) * 3
     recent: list[ModelMessage] = []
     recent_chars = 0
     cutoff = len(messages)
