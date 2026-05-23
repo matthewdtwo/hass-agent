@@ -15,7 +15,7 @@ panel_icon: mdi:robot
 panel_title: HA Agent
 options:
   gemini_api_key: ~
-  gemini_model: "gemini-3.1-flash-lite-preview"
+  gemini_model: "gemini-3.1-flash-lite"
   preferred_model: ~
   openai_api_key: ~
   openai_base_url: ~

@@ -125,7 +125,7 @@ function ConfigSection() {
           <input
             value={geminiModel}
             onChange={(e) => setGeminiModel(e.target.value)}
-            placeholder="gemini-3.1-flash-lite-preview"
+            placeholder="gemini-3.1-flash-lite"
             className={inputClass}
           />
         </Field>

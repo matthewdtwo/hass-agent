@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     hass_url: str = "http://supervisor/core"
     hass_token: str = ""
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.1-flash-lite-preview"
+    gemini_model: str = "gemini-3.1-flash-lite"
     preferred_model: str = ""
     openai_api_key: str = ""
     openai_base_url: str = ""
