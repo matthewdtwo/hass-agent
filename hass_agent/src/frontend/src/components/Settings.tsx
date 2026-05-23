@@ -46,7 +46,7 @@ const btnPrimaryClass =
 
 // ── Configuration section ────────────────────────────────────────────────────
 
-function ConfigSection() {
+function ConfigSection({ onPreferredModelChange }: { onPreferredModelChange?: (model: string) => void }) {
   const [config, setConfig] = useState<AddonConfig | null>(null);
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("");
@@ -82,6 +82,7 @@ function ConfigSection() {
         preferred_model: preferredModel,
       });
       setSaved(true);
+      onPreferredModelChange?.(preferredModel);
       setTimeout(() => setSaved(false), 2500);
     } catch {
       setError("Failed to save configuration.");
@@ -297,10 +298,10 @@ function TokensSection() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function Settings() {
+export default function Settings({ onPreferredModelChange }: { onPreferredModelChange?: (model: string) => void }) {
   return (
     <div className="mx-auto max-w-2xl space-y-12 overflow-y-auto px-6 py-8">
-      <ConfigSection />
+      <ConfigSection onPreferredModelChange={onPreferredModelChange} />
       <hr className="border-gray-200 dark:border-gray-800" />
       <TokensSection />
     </div>

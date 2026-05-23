@@ -150,7 +150,7 @@ export default function App() {
 
         <main className="min-h-0 flex-1 overflow-hidden">
           {currentPage === "settings" ? (
-            <Settings />
+          <Settings onPreferredModelChange={setModel} />
           ) : (
             <Chat
               key={chatKey}
