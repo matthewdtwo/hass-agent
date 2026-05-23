@@ -18,16 +18,19 @@ async def get_models() -> list[ModelInfo]:
     """Return available LLM models from Gemini and OpenAI-compatible servers."""
     models: list[ModelInfo] = []
 
-    # Gemini model from config
-    known_models = {settings.gemini_model, "gemini-3.1-flash-lite"}
-    for model in sorted(known_models):
-        models.append(
-            ModelInfo(
-                id=f"google-gla:{model}",
-                provider="gemini",
-                name=model,
+    # Gemini models — only if API key is configured
+    if settings.gemini_api_key:
+        known_models = {settings.gemini_model, "gemini-3.1-flash-lite"}
+        for model in sorted(known_models):
+            models.append(
+                ModelInfo(
+                    id=f"google-gla:{model}",
+                    provider="gemini",
+                    name=model,
+                )
             )
-        )
+    else:
+        logger.debug("GEMINI_API_KEY not set, skipping Gemini model discovery")
 
     # OpenAI-compatible models (llama.cpp, LM Studio, etc.)
     if not settings.openai_base_url:
