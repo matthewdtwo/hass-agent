@@ -14,10 +14,10 @@ export default function MessageBubble({ message }: Props) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`min-w-0 max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+        className={`min-w-0 overflow-hidden rounded-2xl px-4 py-3 text-sm ${
           isUser
-            ? "bg-blue-600 text-white"
-            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+            ? "max-w-[80%] bg-blue-600 text-white"
+            : "w-full max-w-[95%] bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 md:max-w-[80%]"
         }`}
       >
         {/* Tool calls */}
