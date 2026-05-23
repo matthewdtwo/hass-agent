@@ -14,7 +14,7 @@ export default function MessageBubble({ message }: Props) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+        className={`min-w-0 max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
           isUser
             ? "bg-blue-600 text-white"
             : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
@@ -33,7 +33,7 @@ export default function MessageBubble({ message }: Props) {
         {isUser ? (
           <div className="whitespace-pre-wrap">{message.content}</div>
         ) : (
-          <div className="markdown-body">
+          <div className="markdown-body overflow-x-auto">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
