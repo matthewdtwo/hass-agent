@@ -6,12 +6,15 @@ Built with PydanticAI, FastAPI, and React.
 
 ## Features
 
-- **Chat interface** with streaming responses and visible tool calls
-- **Swappable LLM backend** — select Gemini or any Ollama model from a dropdown
+- **Chat interface** with streaming responses and expandable tool call details
+- **Swappable LLM backend** — select Gemini or any OpenAI-compatible model (llama.cpp, Ollama, etc.) from a dropdown
+- **Home Assistant OAuth** — sign in with your existing HA credentials, no separate accounts needed
+- **Token usage tracking** — per-session context size, input, and output token counts
 - **Entity tools** — list, search, inspect, and get history for any entity
 - **Device tools** — browse devices by manufacturer, area, or keyword
 - **Automation tools** — list automations, inspect configs, validate references
 - **Area tools** — list areas with entity/device counts, browse area contents
+- **Dashboard tools** — read and update Lovelace dashboard configurations
 - **Maintenance analysis**
   - Find unused entities (not referenced by any automation/script/scene)
   - Find unavailable entities and offline devices
@@ -25,24 +28,33 @@ Built with PydanticAI, FastAPI, and React.
 src/
 ├── backend/                    # Python 3.12+, FastAPI
 │   ├── app/
-│   │   ├── main.py             # FastAPI app, CORS, lifespan
+│   │   ├── main.py             # FastAPI app, middleware, lifespan
 │   │   ├── config.py           # pydantic-settings (.env)
+│   │   ├── auth.py             # Auth helpers, HA user info via WebSocket
+│   │   ├── db.py               # SQLite — users, sessions, messages, tokens
 │   │   ├── ha_client.py        # HA REST + WebSocket client
-│   │   ├── agent.py            # PydanticAI agent + 17 tools
-│   │   ├── models.py           # Pydantic request/response models
+│   │   ├── agent.py            # PydanticAI agent + tools
 │   │   └── routers/
+│   │       ├── auth.py         # HA OAuth flow (login, callback, logout)
 │   │       ├── chat.py         # WebSocket /ws/chat (streaming)
-│   │       └── models.py       # GET /api/models
+│   │       ├── sessions.py     # Session CRUD
+│   │       ├── models.py       # GET /api/models
+│   │       ├── tokens.py       # Long-lived access token management
+│   │       └── config.py       # Runtime config read/write
 │   └── pyproject.toml
 └── frontend/                   # React 19, TypeScript, Vite
     └── src/
-        ├── App.tsx             # Layout + model selector
-        ├── api/ws.ts           # useAgentChat() WebSocket hook
+        ├── App.tsx
+        ├── api/
+        │   ├── ws.ts           # useAgentChat() WebSocket hook
+        │   ├── config.ts
+        │   └── tokens.ts
         └── components/
             ├── Chat.tsx
             ├── ChatInput.tsx
             ├── MessageBubble.tsx
-            ├── MessageList.tsx
+            ├── ToolCallCard.tsx  # Expandable tool calls with syntax highlighting
+            ├── Settings.tsx
             └── ModelSelector.tsx
 ```
 
@@ -53,32 +65,42 @@ src/
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - A Home Assistant instance with a long-lived access token
 - At least one LLM provider:
+  - **OpenAI-compatible** — any server with an `/v1` API: llama.cpp, Ollama (with `OLLAMA_ORIGINS` set), LM Studio, etc.
   - **Gemini** — requires a Google AI API key
-  - **Ollama** — requires a running Ollama instance
 
 ## Setup
 
 ### 1. Configure environment
 
-Create `src/backend/.env`:
+Copy `.env.example` to `.env` and fill in your values:
 
+```bash
+cp hass_agent/src/backend/.env.example hass_agent/src/backend/.env
 ```
-HASS_URL=https://your-ha-instance.local:8123
-HASS_TOKEN=your_long_lived_access_token
-OLLAMA_HOST=http://localhost:11434
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-3-flash-preview
-```
+
+Key variables:
+
+| Variable | Description |
+|----------|-------------|
+| `HASS_URL` | Your HA instance URL, e.g. `http://homeassistant.local:8123` |
+| `HASS_TOKEN` | A long-lived access token from your HA profile |
+| `OPENAI_BASE_URL` | Base URL of an OpenAI-compatible server, e.g. `http://192.168.1.10:8081` |
+| `OPENAI_API_KEY` | API key if required by your server (leave blank for llama.cpp) |
+| `GEMINI_API_KEY` | Google AI API key (optional) |
+| `OAUTH_REDIRECT_URI` | Where HA redirects after login — must be this app's URL (default: `http://localhost:5173/oauth/callback`) |
+| `SESSION_SECRET` | Secret for session cookies — set a fixed value to survive backend restarts |
+
+> **OAuth redirect URI:** This must be the URL of *this app*, not your HA URL. HA sends the user back here after they log in. For local dev the default (`http://localhost:5173/oauth/callback`) works. For LAN/mobile testing use your machine's IP, e.g. `http://192.168.1.x:5173/oauth/callback`.
 
 ### 2. Install dependencies
 
 ```bash
 # Backend
-cd src/backend
+cd hass_agent/src/backend
 uv sync
 
 # Frontend
-cd src/frontend
+cd hass_agent/src/frontend
 npm install
 ```
 
@@ -86,15 +108,21 @@ npm install
 
 ```bash
 # Terminal 1 — backend
-cd src/backend
+cd hass_agent/src/backend
 uv run uvicorn app.main:app --reload
 
 # Terminal 2 — frontend
-cd src/frontend
+cd hass_agent/src/frontend
 npm run dev
 ```
 
-Open http://localhost:5173. Select a model from the dropdown and start chatting.
+Open http://localhost:5173. You'll be redirected to your Home Assistant instance to log in, then returned to the app.
+
+## Deployment as an HA Add-on
+
+The app ships as a Home Assistant add-on (`config.yaml` at the repo root). When installed via the add-on store it runs with `addon_mode=True`, which automatically authenticates against the Supervisor API — no OAuth redirect configuration needed.
+
+To sideload during development, add the repository URL in **Settings → Add-ons → Add-on store → ⋮ → Repositories**.
 
 ## Usage examples
 
@@ -106,6 +134,7 @@ Open http://localhost:5173. Select a model from the dropdown and start chatting.
 | "What automations reference broken entities?" | Calls `validate_automations()`, scans configs for non-existent entity IDs |
 | "Show me devices in the kitchen" | Calls `list_devices(area="kitchen")` |
 | "What's the history of sensor.living_room_temp?" | Calls `get_entity_history(entity_id="sensor.living_room_temp")` |
+| "Update my overview dashboard to add a weather card" | Calls `get_dashboard_config()` then `update_dashboard_config()` |
 
 ## Agent tools
 
@@ -129,6 +158,8 @@ Open http://localhost:5173. Select a model from the dropdown and start chatting.
 | `get_error_log` | Recent HA error log lines |
 | `render_template` | Evaluate a Jinja2 template against HA state |
 | `check_config` | Validate HA configuration files |
+| `get_dashboard_config` | Read a Lovelace dashboard configuration |
+| `update_dashboard_config` | Write/update a Lovelace dashboard configuration |
 
 ## API Integration
 
