@@ -157,9 +157,7 @@ async def chat_ws(ws: WebSocket, session_id: str | None = None) -> None:
                                 if hasattr(part, "tool_name"):
                                     tc = {
                                         "name": part.tool_name,
-                                        "args": part.args
-                                        if isinstance(part.args, dict)
-                                        else {},
+                                        "args": part.args_as_dict(),
                                     }
                                     tool_calls_display.append(tc)
                                     await ws.send_json({
