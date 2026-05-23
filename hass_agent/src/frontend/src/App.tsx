@@ -10,18 +10,27 @@ import type { SessionInfo } from "./types";
 
 type Page = "chat" | "settings";
 
+const STORAGE_KEY = "hass-agent-session";
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   // Empty string until config loads; ModelSelector falls back to first available
   const [model, setModel] = useState("");
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  // Restore last active session from localStorage so a browser refresh resumes
+  // the same session instead of starting a new one.
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+    () => localStorage.getItem(STORAGE_KEY)
+  );
   const [currentPage, setCurrentPage] = useState<Page>("chat");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // chatKey only changes on explicit user actions (new chat, select session),
-  // NOT when a session is auto-created mid-stream.
-  const [chatKey, setChatKey] = useState("__new__");
+  // chatKey changes on explicit user actions (new chat, select session), not on
+  // mid-stream auto-create. Seed from localStorage so refresh reconnects properly.
+  const [chatKey, setChatKey] = useState(
+    () => localStorage.getItem(STORAGE_KEY) ?? "__new__"
+  );
 
   // Check auth on mount and load preferred model from config
   useEffect(() => {
@@ -44,6 +53,7 @@ export default function App() {
   }, [user]);
 
   const handleNewChat = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
     setActiveSessionId(null);
     setChatKey("__new__" + Date.now());
     setCurrentPage("chat");
@@ -51,6 +61,7 @@ export default function App() {
   }, []);
 
   const handleSelectSession = useCallback((id: string) => {
+    localStorage.setItem(STORAGE_KEY, id);
     setActiveSessionId(id);
     setChatKey(id);
     setCurrentPage("chat");
@@ -62,6 +73,7 @@ export default function App() {
       await deleteSession(id);
       setSessions((prev) => prev.filter((s) => s.id !== id));
       if (activeSessionId === id) {
+        localStorage.removeItem(STORAGE_KEY);
         setActiveSessionId(null);
         setChatKey("__new__" + Date.now());
       }
@@ -79,7 +91,8 @@ export default function App() {
         updated_at: now,
       };
       setSessions((prev) => [session, ...prev]);
-      // Only update sidebar highlight — don't change chatKey so Chat keeps streaming
+      // Persist and update sidebar highlight without remounting Chat
+      localStorage.setItem(STORAGE_KEY, id);
       setActiveSessionId(id);
     },
     []
