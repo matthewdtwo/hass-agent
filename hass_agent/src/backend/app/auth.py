@@ -1,18 +1,34 @@
 from __future__ import annotations
 
-from authlib.integrations.starlette_client import OAuth
+import json
+
+import websockets
 from fastapi import HTTPException, Request
 
 from app.config import settings
 
-oauth = OAuth()
-oauth.register(
-    name="google",
-    client_id=settings.google_client_id,
-    client_secret=settings.google_client_secret,
-    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-    client_kwargs={"scope": "openid email profile"},
-)
+
+async def get_ha_user_info(access_token: str) -> dict:
+    """Authenticate to HA WebSocket and return the current user's profile."""
+    ws_url = (
+        settings.hass_url
+        .replace("https://", "wss://")
+        .replace("http://", "ws://")
+    ) + "/api/websocket"
+
+    async with websockets.connect(ws_url) as ws:
+        await ws.recv()  # auth_required
+        await ws.send(json.dumps({"type": "auth", "access_token": access_token}))
+        auth_resp = json.loads(await ws.recv())
+        if auth_resp.get("type") != "auth_ok":
+            raise ValueError("HA authentication rejected the access token")
+
+        await ws.send(json.dumps({"id": 1, "type": "auth/current_user"}))
+        user_resp = json.loads(await ws.recv())
+
+    if not user_resp.get("success"):
+        raise ValueError("Could not retrieve HA user info")
+    return user_resp["result"]
 
 
 def get_current_user(request: Request) -> dict | None:
