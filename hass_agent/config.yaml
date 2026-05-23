@@ -14,12 +14,7 @@ ingress_port: 8000
 panel_icon: mdi:robot
 panel_title: HA Agent
 options:
-  gemini_api_key: ~
-  gemini_model: ~
-  preferred_model: ~
   max_context_tokens: 16384
-  openai_api_key: ~
-  openai_base_url: ~
 schema:
   gemini_api_key: str?
   gemini_model: str?
