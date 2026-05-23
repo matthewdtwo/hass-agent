@@ -51,6 +51,7 @@ function ConfigSection({ onPreferredModelChange }: { onPreferredModelChange?: (m
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("");
   const [preferredModel, setPreferredModel] = useState("");
+  const [maxContextTokens, setMaxContextTokens] = useState(16384);
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -66,6 +67,7 @@ function ConfigSection({ onPreferredModelChange }: { onPreferredModelChange?: (m
         setGeminiKey(c.gemini_api_key); // will be "***" or ""
         setGeminiModel(c.gemini_model);
         setPreferredModel(c.preferred_model);
+        setMaxContextTokens(c.max_context_tokens ?? 16384);
         setAvailableModels(models);
       })
       .catch(() => setError("Could not load configuration."));
@@ -80,6 +82,7 @@ function ConfigSection({ onPreferredModelChange }: { onPreferredModelChange?: (m
         ...(geminiKey !== "***" ? { gemini_api_key: geminiKey } : {}),
         gemini_model: geminiModel,
         preferred_model: preferredModel,
+        max_context_tokens: maxContextTokens,
       });
       setSaved(true);
       onPreferredModelChange?.(preferredModel);
@@ -89,7 +92,7 @@ function ConfigSection({ onPreferredModelChange }: { onPreferredModelChange?: (m
     } finally {
       setSaving(false);
     }
-  }, [geminiKey, geminiModel, preferredModel]);
+  }, [geminiKey, geminiModel, preferredModel, maxContextTokens]);
 
   if (!config) {
     return <p className="text-sm text-gray-500">Loading…</p>;
@@ -147,6 +150,20 @@ function ConfigSection({ onPreferredModelChange }: { onPreferredModelChange?: (m
               </option>
             ))}
           </select>
+        </Field>
+
+        <Field
+          label="Max context tokens"
+          hint="Sliding window limit. When exceeded, older messages are summarized automatically. Default: 16384."
+        >
+          <input
+            type="number"
+            min={1024}
+            step={1024}
+            value={maxContextTokens}
+            onChange={(e) => setMaxContextTokens(Number(e.target.value))}
+            className={inputClass}
+          />
         </Field>
       </div>
 

@@ -14,6 +14,7 @@ class ConfigUpdate(BaseModel):
     gemini_api_key: str | None = None
     gemini_model: str | None = None
     preferred_model: str | None = None
+    max_context_tokens: int | None = None
 
 
 @router.get("")
@@ -23,6 +24,7 @@ async def get_config():
         "gemini_api_key": "***" if settings.gemini_api_key else "",
         "gemini_model": settings.gemini_model,
         "preferred_model": settings.preferred_model,
+        "max_context_tokens": settings.max_context_tokens,
         "addon_mode": settings.addon_mode,
     }
 
@@ -36,6 +38,8 @@ async def update_config(data: ConfigUpdate):
         updates["gemini_model"] = data.gemini_model
     if data.preferred_model is not None:
         updates["preferred_model"] = data.preferred_model
+    if data.max_context_tokens is not None:
+        updates["max_context_tokens"] = data.max_context_tokens
 
     # Persist settings
     if settings.addon_mode:

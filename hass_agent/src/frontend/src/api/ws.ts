@@ -77,6 +77,21 @@ export function useAgentChat({
             });
             break;
 
+          case "context_summary":
+            // Insert summary card before the streaming assistant message
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.role === "assistant") {
+                return [
+                  ...prev.slice(0, -1),
+                  { role: "context_summary", content: data.content ?? "" },
+                  last,
+                ];
+              }
+              return [...prev, { role: "context_summary", content: data.content ?? "" }];
+            });
+            break;
+
           case "tool_call":
             pendingToolCalls.current = [
               ...pendingToolCalls.current,

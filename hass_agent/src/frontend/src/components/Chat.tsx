@@ -30,7 +30,7 @@ export default function Chat({ model, sessionId, onSessionCreated }: Props) {
     if (!sid) return;
     getSessionMessages(sid).then((msgs) => {
       const chatMsgs: ChatMessage[] = msgs.map((m) => ({
-        role: m.role,
+        role: m.role as ChatMessage["role"],
         content: m.content,
         toolCalls: m.tool_calls ?? undefined,
       }));

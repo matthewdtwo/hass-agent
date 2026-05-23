@@ -8,6 +8,7 @@ export type WSEventType =
   | "token"
   | "tool_call"
   | "tool_result"
+  | "context_summary"
   | "usage"
   | "done"
   | "error"
@@ -39,7 +40,7 @@ export interface ToolCall {
 }
 
 export interface ChatMessage {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "context_summary";
   content: string;
   toolCalls?: ToolCall[];
 }

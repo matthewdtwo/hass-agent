@@ -15,6 +15,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.agent import AgentDeps, agent
 from app.config import settings
+from app.context_manager import manage_context
 from app.db import (
     accumulate_token_usage,
     create_session,
@@ -124,6 +125,14 @@ async def chat_ws(ws: WebSocket, session_id: str | None = None) -> None:
 
             model = _resolve_model(model_id)
             deps = AgentDeps(ha=ha_client)
+
+            # Apply context management before each turn
+            message_history, summary = await manage_context(
+                message_history, settings.max_context_tokens, model
+            )
+            if summary:
+                await ws.send_json({"type": "context_summary", "content": summary})
+                await save_display_message(db, session_id, "context_summary", summary)
 
             # Track streamed content for display persistence
             assistant_content = ""

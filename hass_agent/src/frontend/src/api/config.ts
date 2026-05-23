@@ -3,6 +3,7 @@ export interface AddonConfig {
   gemini_api_key: string;
   gemini_model: string;
   preferred_model: string;
+  max_context_tokens: number;
   addon_mode: boolean;
 }
 
@@ -16,6 +17,7 @@ export interface ConfigUpdate {
   gemini_api_key?: string;
   gemini_model?: string;
   preferred_model?: string;
+  max_context_tokens?: number;
 }
 
 export async function updateConfig(data: ConfigUpdate): Promise<void> {

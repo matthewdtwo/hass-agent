@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.1-flash-lite"
     preferred_model: str = ""
+    max_context_tokens: int = 16384
     openai_api_key: str = ""
     openai_base_url: str = ""
     db_path: str = "data/hass_agent.db"

@@ -2,6 +2,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import type { ChatMessage } from "../types";
+import ContextSummaryCard from "./ContextSummaryCard";
 import ToolCallCard from "./ToolCallCard";
 
 interface Props {
@@ -9,6 +10,10 @@ interface Props {
 }
 
 export default function MessageBubble({ message }: Props) {
+  if (message.role === "context_summary") {
+    return <ContextSummaryCard content={message.content} />;
+  }
+
   const isUser = message.role === "user";
 
   return (
