@@ -57,18 +57,18 @@ function ConfigSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getConfig()
-      .then((c) => {
+    Promise.all([
+      getConfig(),
+      fetch("api/models").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ])
+      .then(([c, models]) => {
         setConfig(c);
         setGeminiKey(c.gemini_api_key); // will be "***" or ""
         setGeminiModel(c.gemini_model);
         setPreferredModel(c.preferred_model);
+        setAvailableModels(models);
       })
       .catch(() => setError("Could not load configuration."));
-    fetch("api/models")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setAvailableModels)
-      .catch(() => {});
   }, []);
 
   const handleSave = useCallback(async () => {
