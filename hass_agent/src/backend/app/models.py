@@ -29,6 +29,7 @@ class SessionInfo(BaseModel):
     title: str
     created_at: str
     updated_at: str
+    token_usage: dict[str, int] | None = None
 
 
 class DisplayMessage(BaseModel):

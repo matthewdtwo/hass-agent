@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { getSessionMessages } from "../api/sessions";
+import { getSessionDetail } from "../api/sessions";
 import { useAgentChat } from "../api/ws";
 import type { ChatMessage } from "../types";
 import ChatInput from "./ChatInput";
@@ -18,7 +18,7 @@ function fmt(n: number): string {
 export default function Chat({ model, sessionId, onSessionCreated }: Props) {
   const initialSessionId = useRef(sessionId);
 
-  const { messages, isStreaming, tokenUsage, sendMessage, connect, loadMessages } =
+  const { messages, isStreaming, tokenUsage, setTokenUsage, sendMessage, connect, loadMessages } =
     useAgentChat({ sessionId: initialSessionId.current, onSessionCreated });
 
   useEffect(() => {
@@ -28,15 +28,22 @@ export default function Chat({ model, sessionId, onSessionCreated }: Props) {
   useEffect(() => {
     const sid = initialSessionId.current;
     if (!sid) return;
-    getSessionMessages(sid).then((msgs) => {
+
+    getSessionDetail(sid).then(({ messages: msgs, token_usage }) => {
+      // Restore messages (including context_summary cards)
       const chatMsgs: ChatMessage[] = msgs.map((m) => ({
         role: m.role as ChatMessage["role"],
         content: m.content,
         toolCalls: m.tool_calls ?? undefined,
       }));
       loadMessages(chatMsgs);
+
+      // Restore token usage bar
+      if (token_usage && token_usage.input_tokens != null) {
+        setTokenUsage(token_usage);
+      }
     });
-  }, [loadMessages]);
+  }, [loadMessages, setTokenUsage]);
 
   const handleSend = (text: string) => {
     sendMessage(text, model);

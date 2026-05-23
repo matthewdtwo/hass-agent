@@ -1,6 +1,11 @@
-import type { DisplayMessage, SessionInfo } from "../types";
+import type { DisplayMessage, SessionInfo, TokenUsage } from "../types";
 
 const BASE = "api/sessions";
+
+export interface SessionDetailResult {
+  messages: DisplayMessage[];
+  token_usage: TokenUsage | null;
+}
 
 export async function listSessions(): Promise<SessionInfo[]> {
   const resp = await fetch(BASE);
@@ -22,6 +27,17 @@ export async function getSessionMessages(
   const resp = await fetch(`${BASE}/${id}`);
   const data = await resp.json();
   return data.messages;
+}
+
+export async function getSessionDetail(
+  id: string
+): Promise<SessionDetailResult> {
+  const resp = await fetch(`${BASE}/${id}`);
+  const data = await resp.json();
+  return {
+    messages: data.messages,
+    token_usage: data.token_usage ?? null,
+  };
 }
 
 export async function deleteSession(id: string): Promise<void> {

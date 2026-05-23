@@ -30,10 +30,8 @@ def _estimate_tokens(messages: list[ModelMessage]) -> int:
     for msg in messages:
         for part in msg.parts:
             content = getattr(part, "content", None)
-            if isinstance(content, str):
-                total += len(content)
-            elif isinstance(content, list):
-                total += sum(len(str(p)) for p in content)
+            if content is not None:
+                total += len(content if isinstance(content, str) else str(content))
             args = getattr(part, "args", None)
             if args is not None:
                 total += len(str(args))

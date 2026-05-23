@@ -50,12 +50,21 @@ export interface SessionInfo {
   title: string;
   created_at: string;
   updated_at: string;
+  token_usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    context_tokens: number;
+  };
 }
 
 export interface DisplayMessage {
   id: number;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "context_summary";
   content: string;
   tool_calls?: ToolCall[];
   created_at: string;
+}
+
+export interface SessionDetail extends SessionInfo {
+  messages: DisplayMessage[];
 }

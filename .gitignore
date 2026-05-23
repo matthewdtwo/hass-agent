@@ -5,6 +5,7 @@ __pycache__/
 dist/
 *.pyc
 oauth_credentials.json
+*.log
 
 hass_agent/src/backend/data/hass_agent.db
 hass_agent/src/backend/data/hass_agent.db-*

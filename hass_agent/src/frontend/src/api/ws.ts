@@ -168,6 +168,7 @@ export function useAgentChat({
     messages,
     isStreaming,
     tokenUsage,
+    setTokenUsage,
     sendMessage,
     connect,
     disconnect,
