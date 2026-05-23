@@ -39,7 +39,7 @@ hass_agent/
 
 ## Key Conventions
 
-- **LLM providers**: OpenAI-compatible (`openai:` prefix, `OPENAI_BASE_URL`) and Gemini (`google-gla:` prefix). No Ollama-specific code — Ollama works via the OpenAI-compatible endpoint.
+- **LLM providers**: OpenAI-compatible (`openai:` prefix, `OPENAI_BASE_URL`) and Gemini (`google-gla:` prefix).
 - **Auth**: HA OAuth only. No Google OAuth. `oauth_state` is stored in a dedicated cookie (not session) to survive Vite proxy redirects.
 - **Addon mode**: `ADDON_MODE=true` skips OAuth; the Supervisor injects auth. Settings overlay from `/data/options.json`.
 - **Tool results**: Use `_to_json_str()` in `chat.py` to serialize HA tool outputs — handles Python repr dicts via `ast.literal_eval`.

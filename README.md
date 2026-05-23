@@ -7,7 +7,7 @@ Built with PydanticAI, FastAPI, and React.
 ## Features
 
 - **Chat interface** with streaming responses and expandable tool call details
-- **Swappable LLM backend** — select Gemini or any OpenAI-compatible model (llama.cpp, Ollama, etc.) from a dropdown
+- **Swappable LLM backend** — select Gemini or any OpenAI-compatible model (llama.cpp, LM Studio, etc.) from a dropdown
 - **Home Assistant OAuth** — sign in with your existing HA credentials, no separate accounts needed
 - **Token usage tracking** — per-session context size, input, and output token counts
 - **Entity tools** — list, search, inspect, and get history for any entity
@@ -65,7 +65,7 @@ src/
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - A Home Assistant instance with a long-lived access token
 - At least one LLM provider:
-  - **OpenAI-compatible** — any server with an `/v1` API: llama.cpp, Ollama (with `OLLAMA_ORIGINS` set), LM Studio, etc.
+  - **OpenAI-compatible** — any server with an `/v1` API: llama.cpp, LM Studio, and others
   - **Gemini** — requires a Google AI API key
 
 ## Setup

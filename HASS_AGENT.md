@@ -32,7 +32,7 @@ Response:
 ```json
 [
   {"id": "google-gla:gemini-3-flash-preview", "provider": "gemini", "name": "gemini-3-flash-preview"},
-  {"id": "ollama:llama3:latest", "provider": "ollama", "name": "llama3:latest"}
+  {"id": "openai:llama3:latest", "provider": "openai", "name": "llama3:latest"}
 ]
 ```
 
